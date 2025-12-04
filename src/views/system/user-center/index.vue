@@ -106,13 +106,21 @@
         <div class="art-card-sm my-5">
           <h1 class="p-4 text-xl font-normal border-b border-g-300">更改密码</h1>
 
-          <ElForm :model="pwdForm" class="box-border p-5" label-width="86px" label-position="top">
-            <ElFormItem label="当前密码" prop="password">
+          <ElForm
+            :model="pwdForm"
+            :rules="pwdRules"
+            ref="pwdFormRef"
+            class="box-border p-5"
+            label-width="86px"
+            label-position="top"
+          >
+            <ElFormItem label="当前密码" prop="oldPassword">
               <ElInput
-                v-model="pwdForm.password"
+                v-model="pwdForm.oldPassword"
                 type="password"
                 :disabled="!isEditPwd"
                 show-password
+                placeholder="请输入当前密码"
               />
             </ElFormItem>
 
@@ -122,6 +130,7 @@
                 type="password"
                 :disabled="!isEditPwd"
                 show-password
+                placeholder="请输入新密码（至少8位，包含字母和数字）"
               />
             </ElFormItem>
 
@@ -131,6 +140,7 @@
                 type="password"
                 :disabled="!isEditPwd"
                 show-password
+                placeholder="请再次输入新密码"
               />
             </ElFormItem>
 
@@ -148,7 +158,9 @@
 
 <script setup lang="ts">
   import { useUserStore } from '@/store/modules/user'
+  import { ElMessage } from 'element-plus'
   import type { FormInstance, FormRules } from 'element-plus'
+  import { fetchChangePassword } from '@/api/user'
 
   defineOptions({ name: 'UserCenter' })
 
@@ -159,6 +171,7 @@
   const isEditPwd = ref(false)
   const date = ref('')
   const ruleFormRef = ref<FormInstance>()
+  const pwdFormRef = ref<FormInstance>()
 
   /**
    * 用户信息表单
@@ -177,9 +190,9 @@
    * 密码修改表单
    */
   const pwdForm = reactive({
-    password: '123456',
-    newPassword: '123456',
-    confirmPassword: '123456'
+    oldPassword: '',
+    newPassword: '',
+    confirmPassword: ''
   })
 
   /**
@@ -198,6 +211,34 @@
     mobile: [{ required: true, message: '请输入手机号码', trigger: 'blur' }],
     address: [{ required: true, message: '请输入地址', trigger: 'blur' }],
     sex: [{ required: true, message: '请选择性别', trigger: 'blur' }]
+  })
+
+  /**
+   * 密码修改表单验证规则
+   */
+  const validateConfirmPassword = (rule: any, value: string, callback: any) => {
+    if (value !== pwdForm.newPassword) {
+      callback(new Error('两次输入的密码不一致'))
+    } else {
+      callback()
+    }
+  }
+
+  const pwdRules = reactive<FormRules>({
+    oldPassword: [{ required: true, message: '请输入当前密码', trigger: 'blur' }],
+    newPassword: [
+      { required: true, message: '请输入新密码', trigger: 'blur' },
+      { min: 8, message: '密码长度至少8位', trigger: 'blur' },
+      {
+        pattern: /^(?=.*[A-Za-z])(?=.*\d)/,
+        message: '密码必须包含字母和数字',
+        trigger: 'blur'
+      }
+    ],
+    confirmPassword: [
+      { required: true, message: '请再次输入新密码', trigger: 'blur' },
+      { validator: validateConfirmPassword, trigger: 'blur' }
+    ]
   })
 
   /**
@@ -239,9 +280,52 @@
   }
 
   /**
-   * 切换密码编辑状态
+   * 切换密码编辑状态或保存密码
    */
-  const editPwd = () => {
-    isEditPwd.value = !isEditPwd.value
+  const editPwd = async () => {
+    if (!isEditPwd.value) {
+      // 切换到编辑模式
+      isEditPwd.value = true
+    } else {
+      // 保存密码
+      if (!pwdFormRef.value) return
+
+      try {
+        // 验证表单
+        await pwdFormRef.value.validate()
+
+        // 调用 API
+        await fetchChangePassword({
+          oldPassword: pwdForm.oldPassword,
+          newPassword: pwdForm.newPassword,
+          confirmPassword: pwdForm.confirmPassword
+        })
+
+        ElMessage.success('密码修改成功，请重新登录')
+
+        // 清空表单
+        pwdForm.oldPassword = ''
+        pwdForm.newPassword = ''
+        pwdForm.confirmPassword = ''
+        pwdFormRef.value.clearValidate()
+
+        // 退出编辑模式
+        isEditPwd.value = false
+
+        // 延迟跳转到登录页（让用户看到成功消息）
+        setTimeout(() => {
+          userStore.logOut()
+        }, 1500)
+      } catch (error: any) {
+        // 表单验证失败或 API 调用失败
+        if (error?.errors) {
+          // 表单验证错误
+          console.error('表单验证失败:', error)
+        } else {
+          // API 错误已在拦截器中处理，这里不需要额外处理
+          console.error('密码修改失败:', error)
+        }
+      }
+    }
   }
 </script>

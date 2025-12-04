@@ -74,6 +74,19 @@ declare namespace Api {
       refreshToken: string
     }
 
+    /** 注册参数 */
+    interface RegisterParams {
+      username: string
+      password: string
+    }
+
+    /** 注册响应 */
+    interface RegisterResponse {
+      userId: string
+      userName: string
+      message: string
+    }
+
     /** 用户信息 */
     interface UserInfo {
       buttons: string[]

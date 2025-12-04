@@ -30,7 +30,7 @@ export interface ErrorResponse {
   /** 错误状态码 */
   code: number
   /** 错误消息 */
-  msg: string
+  message: string
   /** 错误附加数据 */
   data?: unknown
 }
@@ -126,7 +126,7 @@ export function handleError(error: AxiosError<ErrorResponse>): never {
   }
 
   const statusCode = error.response?.status
-  const errorMessage = error.response?.data?.msg || error.message
+  const errorMessage = error.response?.data?.message || error.message
   const requestConfig = error.config
 
   // 处理网络错误

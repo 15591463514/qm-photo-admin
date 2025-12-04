@@ -88,6 +88,8 @@
 <script setup lang="ts">
   import { useI18n } from 'vue-i18n'
   import type { FormInstance, FormRules } from 'element-plus'
+  import { fetchRegister } from '@/api/auth'
+  import { HttpError } from '@/utils/http/error'
 
   defineOptions({ name: 'Register' })
 
@@ -100,7 +102,7 @@
 
   const USERNAME_MIN_LENGTH = 3
   const USERNAME_MAX_LENGTH = 20
-  const PASSWORD_MIN_LENGTH = 6
+  const PASSWORD_MIN_LENGTH = 8
   const REDIRECT_DELAY = 1000
 
   const { t, locale } = useI18n()
@@ -123,8 +125,34 @@
   })
 
   /**
+   * 验证用户名格式
+   * 只能包含字母、数字和下划线
+   */
+  const validateUsername = (_rule: any, value: string, callback: (error?: Error) => void) => {
+    if (!value) {
+      callback(new Error(t('register.placeholder.username')))
+      return
+    }
+
+    // 检查长度
+    if (value.length < USERNAME_MIN_LENGTH || value.length > USERNAME_MAX_LENGTH) {
+      callback(new Error(t('register.rule.usernameLength')))
+      return
+    }
+
+    // 检查格式：只能包含字母、数字和下划线
+    const usernameRegex = /^[a-zA-Z0-9_]+$/
+    if (!usernameRegex.test(value)) {
+      callback(new Error(t('register.rule.usernameFormat') || '用户名只能包含字母、数字和下划线'))
+      return
+    }
+
+    callback()
+  }
+
+  /**
    * 验证密码
-   * 当密码输入后，如果确认密码已填写，则触发确认密码的验证
+   * 至少8位，必须包含字母和数字
    */
   const validatePassword = (_rule: any, value: string, callback: (error?: Error) => void) => {
     if (!value) {
@@ -132,6 +160,24 @@
       return
     }
 
+    // 检查长度
+    if (value.length < PASSWORD_MIN_LENGTH) {
+      callback(
+        new Error(t('register.rule.passwordLength') || `密码长度不能少于${PASSWORD_MIN_LENGTH}位`)
+      )
+      return
+    }
+
+    // 检查是否包含字母和数字
+    const hasLetter = /[a-zA-Z]/.test(value)
+    const hasNumber = /\d/.test(value)
+
+    if (!hasLetter || !hasNumber) {
+      callback(new Error(t('register.rule.passwordFormat') || '密码必须包含字母和数字'))
+      return
+    }
+
+    // 如果确认密码已填写，触发确认密码的验证
     if (formData.confirmPassword) {
       formRef.value?.validateField('confirmPassword')
     }
@@ -174,19 +220,8 @@
   }
 
   const rules = computed<FormRules<RegisterForm>>(() => ({
-    username: [
-      { required: true, message: t('register.placeholder.username'), trigger: 'blur' },
-      {
-        min: USERNAME_MIN_LENGTH,
-        max: USERNAME_MAX_LENGTH,
-        message: t('register.rule.usernameLength'),
-        trigger: 'blur'
-      }
-    ],
-    password: [
-      { required: true, validator: validatePassword, trigger: 'blur' },
-      { min: PASSWORD_MIN_LENGTH, message: t('register.rule.passwordLength'), trigger: 'blur' }
-    ],
+    username: [{ required: true, validator: validateUsername, trigger: 'blur' }],
+    password: [{ required: true, validator: validatePassword, trigger: 'blur' }],
     confirmPassword: [{ required: true, validator: validateConfirmPassword, trigger: 'blur' }],
     agreement: [{ validator: validateAgreement, trigger: 'change' }]
   }))
@@ -199,28 +234,42 @@
     if (!formRef.value) return
 
     try {
-      await formRef.value.validate()
+      // 表单验证
+      const valid = await formRef.value.validate()
+      if (!valid) return
+
       loading.value = true
 
-      // TODO: 替换为真实 API 调用
-      // const params = {
-      //   username: formData.username,
-      //   password: formData.password
-      // }
-      // const res = await AuthService.register(params)
-      // if (res.code === ApiStatus.success) {
-      //   ElMessage.success('注册成功')
-      //   toLogin()
-      // }
+      // 注册请求
+      const params: Api.Auth.RegisterParams = {
+        username: formData.username,
+        password: formData.password
+      }
 
-      // 模拟注册请求
-      setTimeout(() => {
-        loading.value = false
-        ElMessage.success('注册成功')
-        toLogin()
-      }, REDIRECT_DELAY)
+      // HTTP 拦截器已经处理了错误情况，这里如果执行到这里说明注册成功
+      // 拦截器返回的是 data 字段的内容，不是完整的响应对象
+      const res = await fetchRegister(params)
+
+      // 注册成功，显示成功消息并跳转
+      ElMessage.success(res.message || t('register.success') || '注册成功')
+      toLogin()
     } catch (error) {
-      console.error('表单验证失败:', error)
+      // 处理 HttpError
+      if (error instanceof HttpError) {
+        // HttpError 的错误消息已经由 http 拦截器处理并显示
+        console.error('[Register] HttpError:', error)
+      } else {
+        // 处理其他错误（如表单验证失败）
+        console.error('[Register] Unexpected error:', error)
+        // 表单验证失败不需要显示错误消息，Element Plus 会自动显示
+        if (error && typeof error === 'object' && 'message' in error) {
+          // 如果是其他类型的错误，显示错误消息
+          ElMessage.error(
+            (error as Error).message || t('register.failed') || '注册失败，请稍后重试'
+          )
+        }
+      }
+    } finally {
       loading.value = false
     }
   }

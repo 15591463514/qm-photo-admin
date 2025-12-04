@@ -27,9 +27,15 @@ export default ({ mode }: { mode: string }) => {
     server: {
       port: Number(VITE_PORT),
       proxy: {
+        // '/api': {
+        //   target: VITE_API_PROXY_URL,
+        //   changeOrigin: true
+        // }
+        // 开发
         '/api': {
           target: VITE_API_PROXY_URL,
-          changeOrigin: true
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api/, '/api/v1')
         }
       },
       host: true
