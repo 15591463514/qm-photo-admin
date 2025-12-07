@@ -34,6 +34,8 @@
 
 <script setup lang="ts">
   import type { FormInstance, FormRules } from 'element-plus'
+  import { fetchCreateRole, fetchUpdateRole } from '@/api/system-manage'
+  import { ElMessage } from 'element-plus'
 
   type RoleListItem = Api.SystemManage.RoleListItem
 
@@ -72,13 +74,13 @@
   const rules = reactive<FormRules>({
     roleName: [
       { required: true, message: '请输入角色名称', trigger: 'blur' },
-      { min: 2, max: 20, message: '长度在 2 到 20 个字符', trigger: 'blur' }
+      { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
     ],
     roleCode: [
       { required: true, message: '请输入角色编码', trigger: 'blur' },
       { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
     ],
-    description: [{ required: true, message: '请输入角色描述', trigger: 'blur' }]
+    description: [{ max: 500, message: '描述长度不能超过500个字符', trigger: 'blur' }]
   })
 
   /**
@@ -150,13 +152,41 @@
 
     try {
       await formRef.value.validate()
-      // TODO: 调用新增/编辑接口
-      const message = props.dialogType === 'add' ? '新增成功' : '修改成功'
-      ElMessage.success(message)
+
+      if (props.dialogType === 'add') {
+        // 创建角色
+        await fetchCreateRole({
+          roleName: form.roleName,
+          roleCode: form.roleCode,
+          description: form.description || undefined,
+          enabled: form.enabled
+        })
+        ElMessage.success('新增成功')
+      } else {
+        // 更新角色
+        if (!props.roleData?.roleId) {
+          ElMessage.error('角色ID不存在')
+          return
+        }
+        await fetchUpdateRole(props.roleData.roleId, {
+          roleName: form.roleName,
+          roleCode: form.roleCode,
+          description: form.description || undefined,
+          enabled: form.enabled
+        })
+        ElMessage.success('修改成功')
+      }
+
       emit('success')
       handleClose()
-    } catch (error) {
-      console.log('表单验证失败:', error)
+    } catch (error: any) {
+      if (error?.errors) {
+        // 表单验证错误
+        console.log('表单验证失败:', error)
+      } else {
+        // API 错误已在拦截器中处理
+        console.error('保存角色失败:', error)
+      }
     }
   }
 </script>

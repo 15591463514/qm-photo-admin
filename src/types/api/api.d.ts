@@ -144,5 +144,21 @@ declare namespace Api {
       Pick<RoleListItem, 'roleId' | 'roleName' | 'roleCode' | 'description' | 'enabled'> &
         Api.Common.CommonSearchParams
     >
+
+    /** 创建角色参数 */
+    interface CreateRoleParams {
+      roleName: string
+      roleCode: string
+      description?: string
+      enabled?: boolean
+    }
+
+    /** 更新角色参数 */
+    interface UpdateRoleParams {
+      roleName?: string
+      roleCode?: string
+      description?: string
+      enabled?: boolean
+    }
   }
 }

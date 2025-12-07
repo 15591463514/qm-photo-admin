@@ -138,12 +138,15 @@
 
   /**
    * 监听弹窗打开，初始化权限数据
+   * 注意：权限设置功能需要菜单模块支持，待菜单模块实现后再完善
    */
   watch(
     () => props.modelValue,
     (newVal) => {
       if (newVal && props.roleData) {
         // TODO: 根据角色加载对应的权限数据
+        // 需要实现接口：GET /api/role/:id/permissions
+        // 返回角色的菜单和按钮权限列表
         console.log('设置权限:', props.roleData)
       }
     }
@@ -159,12 +162,23 @@
 
   /**
    * 保存权限配置
+   * 注意：权限设置功能需要菜单模块支持，待菜单模块实现后再完善
    */
   const savePermission = () => {
     // TODO: 调用保存权限接口
-    ElMessage.success('权限保存成功')
-    emit('success')
-    handleClose()
+    // 需要实现接口：POST /api/role/:id/permissions
+    // 参数：{ menuIds: number[], buttonIds: number[] }
+    // 保存角色的菜单和按钮权限
+    const tree = treeRef.value
+    if (!tree) return
+
+    const checkedKeys = tree.getCheckedKeys()
+    console.log('选中的权限:', checkedKeys)
+
+    ElMessage.warning('权限设置功能待菜单模块实现后完善')
+    // ElMessage.success('权限保存成功')
+    // emit('success')
+    // handleClose()
   }
 
   /**
