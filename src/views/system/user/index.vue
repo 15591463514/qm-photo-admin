@@ -11,11 +11,7 @@
     <ElCard class="art-table-card" shadow="never">
       <!-- 表格头部 -->
       <ArtTableHeader v-model:columns="columnChecks" :loading="loading" @refresh="refreshData">
-        <template #left>
-          <ElSpace wrap>
-            <ElButton @click="showDialog('add')" v-ripple>新增用户</ElButton>
-          </ElSpace>
-        </template>
+        <!-- 移除新增用户按钮，用户只能通过注册新增 -->
       </ArtTableHeader>
 
       <!-- 表格 -->
@@ -233,11 +229,17 @@
 
   /**
    * 显示用户弹窗
+   * 注意：只支持编辑，用户通过注册新增
    */
   const showDialog = (type: DialogType, row?: UserListItem): void => {
-    console.log('打开弹窗:', { type, row })
-    dialogType.value = type
-    currentUserData.value = row || {}
+    // 只允许编辑模式
+    if (type !== 'edit' || !row) {
+      ElMessage.warning('只能编辑已有用户，新用户请通过注册功能添加')
+      return
+    }
+    console.log('打开编辑弹窗:', row)
+    dialogType.value = 'edit'
+    currentUserData.value = row
     nextTick(() => {
       dialogVisible.value = true
     })

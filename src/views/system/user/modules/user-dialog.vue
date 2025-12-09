@@ -1,25 +1,8 @@
 <template>
-  <ElDialog
-    v-model="dialogVisible"
-    :title="dialogType === 'add' ? '添加用户' : '编辑用户'"
-    width="30%"
-    align-center
-  >
+  <ElDialog v-model="dialogVisible" title="编辑用户" width="30%" align-center>
     <ElForm ref="formRef" :model="formData" :rules="rules" label-width="80px">
       <ElFormItem label="用户名" prop="username">
-        <ElInput
-          v-model="formData.username"
-          placeholder="请输入用户名"
-          :disabled="dialogType === 'edit'"
-        />
-      </ElFormItem>
-      <ElFormItem v-if="dialogType === 'add'" label="密码" prop="password">
-        <ElInput
-          v-model="formData.password"
-          type="password"
-          placeholder="请输入密码"
-          show-password
-        />
+        <ElInput v-model="formData.username" placeholder="请输入用户名" disabled />
       </ElFormItem>
       <ElFormItem label="昵称" prop="nickName">
         <ElInput v-model="formData.nickName" placeholder="请输入昵称（选填）" />
@@ -52,7 +35,7 @@
 </template>
 
 <script setup lang="ts">
-  import { fetchGetRoleList, fetchCreateUser, fetchUpdateUser } from '@/api/system-manage'
+  import { fetchGetRoleList, fetchUpdateUser } from '@/api/system-manage'
   import type { FormInstance, FormRules } from 'element-plus'
   import { ElMessage } from 'element-plus'
 
@@ -80,43 +63,27 @@
     set: (value) => emit('update:visible', value)
   })
 
-  const dialogType = computed(() => props.type)
-
   // 表单实例
   const formRef = ref<FormInstance>()
 
   // 表单数据
   const formData = reactive({
     username: '',
-    password: '',
     nickName: '',
     gender: 'unknown',
     role: [] as string[]
   })
 
-  // 表单验证规则（动态规则，根据对话框类型调整）
-  const rules = computed<FormRules>(() => {
-    const baseRules: FormRules = {
-      username: [
-        { required: true, message: '请输入用户名', trigger: 'blur' },
-        { min: 2, max: 20, message: '长度在 2 到 20 个字符', trigger: 'blur' }
-      ],
-      nickName: [{ max: 50, message: '昵称长度不能超过50个字符', trigger: 'blur' }],
-      gender: [{ required: true, message: '请选择性别', trigger: 'blur' }],
-      role: [{ required: true, message: '请选择角色', trigger: 'blur' }]
-    }
-
-    // 只在新增模式下验证密码
-    if (dialogType.value === 'add') {
-      baseRules.password = [
-        { required: true, message: '请输入密码', trigger: 'blur' },
-        { min: 8, message: '密码长度至少8位', trigger: 'blur' },
-        { pattern: /^(?=.*[A-Za-z])(?=.*\d)/, message: '密码必须包含字母和数字', trigger: 'blur' }
-      ]
-    }
-
-    return baseRules
-  })
+  // 表单验证规则
+  const rules: FormRules = {
+    username: [
+      { required: true, message: '请输入用户名', trigger: 'blur' },
+      { min: 2, max: 20, message: '长度在 2 到 20 个字符', trigger: 'blur' }
+    ],
+    nickName: [{ max: 50, message: '昵称长度不能超过50个字符', trigger: 'blur' }],
+    gender: [{ required: true, message: '请选择性别', trigger: 'blur' }],
+    role: [{ required: true, message: '请选择角色', trigger: 'blur' }]
+  }
 
   /**
    * 获取角色列表
@@ -144,18 +111,16 @@
 
   /**
    * 初始化表单数据
-   * 根据对话框类型（新增/编辑）填充表单
+   * 只支持编辑模式，用户通过注册新增
    */
   const initFormData = () => {
-    const isEdit = props.type === 'edit' && props.userData
     const row = props.userData
 
     Object.assign(formData, {
-      username: isEdit && row ? row.userName || '' : '',
-      password: '',
-      nickName: isEdit && row ? row.nickName || '' : '',
-      gender: isEdit && row ? row.userGender || 'unknown' : 'unknown',
-      role: isEdit && row ? (Array.isArray(row.userRoles) ? row.userRoles : []) : []
+      username: row?.userName || '',
+      nickName: row?.nickName || '',
+      gender: row?.userGender || 'unknown',
+      role: Array.isArray(row?.userRoles) ? row.userRoles : []
     })
   }
 
@@ -181,6 +146,7 @@
   /**
    * 提交表单
    * 验证通过后触发提交事件
+   * 注意：只支持编辑，用户通过注册新增
    */
   const handleSubmit = async () => {
     if (!formRef.value) return
@@ -188,29 +154,17 @@
     await formRef.value.validate(async (valid) => {
       if (valid) {
         try {
-          if (dialogType.value === 'add') {
-            // 创建用户
-            await fetchCreateUser({
-              userName: formData.username,
-              password: formData.password,
-              nickName: formData.nickName || undefined,
-              userGender: formData.gender,
-              roleCodes: formData.role.length > 0 ? formData.role : undefined
-            })
-            ElMessage.success('添加成功')
-          } else {
-            // 更新用户
-            if (!props.userData?.id) {
-              ElMessage.error('用户ID不存在')
-              return
-            }
-            await fetchUpdateUser(props.userData.id, {
-              nickName: formData.nickName || undefined,
-              userGender: formData.gender,
-              roleCodes: formData.role.length > 0 ? formData.role : []
-            })
-            ElMessage.success('更新成功')
+          // 只支持更新用户
+          if (!props.userData?.id) {
+            ElMessage.error('用户ID不存在')
+            return
           }
+          await fetchUpdateUser(props.userData.id, {
+            nickName: formData.nickName || undefined,
+            userGender: formData.gender,
+            roleCodes: formData.role.length > 0 ? formData.role : []
+          })
+          ElMessage.success('更新成功')
           dialogVisible.value = false
           emit('submit')
         } catch (error) {
