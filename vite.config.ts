@@ -38,7 +38,8 @@ export default ({ mode }: { mode: string }) => {
           rewrite: (path) => path.replace(/^\/api/, '/api/v1')
         }
       },
-      host: true
+      host: true,
+      allowedHosts: true
     },
     // 路径别名
     resolve: {

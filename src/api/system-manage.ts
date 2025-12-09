@@ -9,6 +9,29 @@ export function fetchGetUserList(params: Api.SystemManage.UserSearchParams) {
   })
 }
 
+// 创建用户
+export function fetchCreateUser(params: Api.SystemManage.CreateUserParams) {
+  return request.post<Api.SystemManage.UserListItem>({
+    url: '/api/user',
+    params
+  })
+}
+
+// 更新用户
+export function fetchUpdateUser(id: number, params: Api.SystemManage.UpdateUserParams) {
+  return request.put<Api.SystemManage.UserListItem>({
+    url: `/api/user/${id}`,
+    params
+  })
+}
+
+// 删除用户
+export function fetchDeleteUser(id: number) {
+  return request.del<Api.SystemManage.UserListItem>({
+    url: `/api/user/${id}`
+  })
+}
+
 // 获取角色列表
 export function fetchGetRoleList(params: Api.SystemManage.RoleSearchParams) {
   return request.get<Api.SystemManage.RoleList>({

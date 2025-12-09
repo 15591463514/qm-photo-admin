@@ -45,10 +45,10 @@
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import { ACCOUNT_TABLE_DATA } from '@/mock/temp/formData'
   import { useTable } from '@/hooks/core/useTable'
-  import { fetchGetUserList } from '@/api/system-manage'
+  import { fetchGetUserList, fetchDeleteUser } from '@/api/system-manage'
   import UserSearch from './modules/user-search.vue'
   import UserDialog from './modules/user-dialog.vue'
-  import { ElTag, ElMessageBox, ElImage } from 'element-plus'
+  import { ElTag, ElMessageBox, ElImage, ElMessage } from 'element-plus'
   import { DialogType } from '@/types'
 
   defineOptions({ name: 'User' })
@@ -66,8 +66,8 @@
   // 搜索表单
   const searchForm = ref({
     userName: undefined,
+    nickName: undefined,
     userGender: undefined,
-    userPhone: undefined,
     userEmail: undefined,
     status: '1'
   })
@@ -124,7 +124,7 @@
         {
           prop: 'userInfo',
           label: '用户名',
-          width: 280,
+          width: 200,
           // visible: false, // 默认是否显示列
           formatter: (row) => {
             return h('div', { class: 'user flex-c' }, [
@@ -143,15 +143,32 @@
           }
         },
         {
+          prop: 'nickName',
+          label: '昵称',
+          minWidth: 120
+        },
+        {
           prop: 'userGender',
           label: '性别',
           sortable: true,
           formatter: (row) => row.userGender
         },
-        { prop: 'userPhone', label: '手机号' },
+        {
+          prop: 'userRoles',
+          label: '角色',
+          minWidth: 150,
+          formatter: (row) => {
+            return h('div', { style: 'display: flex; flex-wrap: wrap; gap: 4px' }, [
+              ...row.userRoles.map((roleCode: string) =>
+                h(ElTag, { type: 'primary', size: 'small' }, () => roleCode)
+              )
+            ])
+          }
+        },
         {
           prop: 'status',
           label: '状态',
+          width: 100,
           formatter: (row) => {
             const statusConfig = getUserStatusConfig(row.status)
             return h(ElTag, { type: statusConfig.type }, () => statusConfig.text)
@@ -160,7 +177,8 @@
         {
           prop: 'createTime',
           label: '创建日期',
-          sortable: true
+          sortable: true,
+          width: 160
         },
         {
           prop: 'operation',
@@ -228,24 +246,36 @@
   /**
    * 删除用户
    */
-  const deleteUser = (row: UserListItem): void => {
-    console.log('删除用户:', row)
-    ElMessageBox.confirm(`确定要注销该用户吗？`, '注销用户', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'error'
-    }).then(() => {
+  const deleteUser = async (row: UserListItem): Promise<void> => {
+    try {
+      await ElMessageBox.confirm(`确定要注销该用户吗？`, '注销用户', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'error'
+      })
+
+      // 调用删除接口
+      await fetchDeleteUser(row.id)
       ElMessage.success('注销成功')
-    })
+      // 刷新表格数据
+      refreshData()
+    } catch (error: any) {
+      if (error !== 'cancel') {
+        // 错误已在拦截器中处理
+        console.error('删除用户失败:', error)
+      }
+    }
   }
 
   /**
-   * 处理弹窗提交事件
+   * 处理弹窗提交事件（新增或编辑用户成功后）
    */
   const handleDialogSubmit = async () => {
     try {
       dialogVisible.value = false
       currentUserData.value = {}
+      // 刷新表格数据
+      refreshData()
     } catch (error) {
       console.error('提交失败:', error)
     }

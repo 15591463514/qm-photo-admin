@@ -126,6 +126,33 @@ declare namespace Api {
         Api.Common.CommonSearchParams
     >
 
+    /** 创建用户参数 */
+    interface CreateUserParams {
+      userName: string
+      password: string
+      nickName?: string
+      email?: string
+      avatar?: string
+      userPhone?: string
+      userGender?: string
+      status?: string
+      remark?: string
+      roleCodes?: string[]
+    }
+
+    /** 更新用户参数 */
+    interface UpdateUserParams {
+      password?: string
+      nickName?: string
+      email?: string
+      avatar?: string
+      userPhone?: string
+      userGender?: string
+      status?: string
+      remark?: string
+      roleCodes?: string[]
+    }
+
     /** 角色列表 */
     type RoleList = Api.Common.PaginatedResponse<RoleListItem>
 

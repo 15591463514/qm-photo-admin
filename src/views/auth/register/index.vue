@@ -162,9 +162,7 @@
 
     // 检查长度
     if (value.length < PASSWORD_MIN_LENGTH) {
-      callback(
-        new Error(t('register.rule.passwordLength') || `密码长度不能少于${PASSWORD_MIN_LENGTH}位`)
-      )
+      callback(new Error(`密码长度不能少于${PASSWORD_MIN_LENGTH}位`))
       return
     }
 
