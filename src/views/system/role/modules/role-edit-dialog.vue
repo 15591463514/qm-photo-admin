@@ -83,17 +83,19 @@
     description: [{ max: 500, message: '描述长度不能超过500个字符', trigger: 'blur' }]
   })
 
-  /**
-   * 表单数据
-   */
-  const form = reactive<RoleListItem>({
+  const defaultFormData: RoleListItem = {
     roleId: 0,
     roleName: '',
     roleCode: '',
     description: '',
     createTime: '',
     enabled: true
-  })
+  }
+
+  /**
+   * 表单数据
+   */
+  const form = reactive<RoleListItem>(defaultFormData)
 
   /**
    * 监听弹窗打开，初始化表单数据
@@ -124,14 +126,7 @@
     if (props.dialogType === 'edit' && props.roleData) {
       Object.assign(form, props.roleData)
     } else {
-      Object.assign(form, {
-        roleId: 0,
-        roleName: '',
-        roleCode: '',
-        description: '',
-        createTime: '',
-        enabled: true
-      })
+      Object.assign(form, defaultFormData)
     }
   }
 

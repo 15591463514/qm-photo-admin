@@ -11,6 +11,10 @@
 </template>
 
 <script setup lang="ts">
+  import { useDictStore } from '@/store/modules/dict'
+  import { DICT_TYPE_CODE } from '@/constants/dict'
+  import { computed } from 'vue'
+
   interface Props {
     modelValue: Record<string, any>
   }
@@ -21,6 +25,18 @@
   }
   const props = defineProps<Props>()
   const emit = defineEmits<Emits>()
+
+  // 字典 store
+  const dictStore = useDictStore()
+
+  // 性别选项（从字典 store 获取）
+  const genderOptions = computed(() => {
+    const dicts = dictStore.getDictByType(DICT_TYPE_CODE.USER_GENDER)
+    return dicts.map((dict) => ({
+      label: dict.dataLabel,
+      value: dict.dataValue
+    }))
+  })
 
   // 表单数据双向绑定
   const searchBarRef = ref()
@@ -82,6 +98,8 @@
       key: 'status',
       type: 'select',
       props: {
+        clearable: true,
+        filterable: true,
         placeholder: '请选择状态',
         options: statusOptions.value
       }
@@ -89,12 +107,12 @@
     {
       label: '性别',
       key: 'userGender',
-      type: 'radiogroup',
+      type: 'select',
       props: {
-        options: [
-          { label: '男', value: '1' },
-          { label: '女', value: '2' }
-        ]
+        clearable: true,
+        filterable: true,
+        placeholder: '请选择性别',
+        options: genderOptions.value
       }
     }
   ])

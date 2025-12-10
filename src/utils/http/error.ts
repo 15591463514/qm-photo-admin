@@ -97,7 +97,7 @@ export class HttpError extends Error {
  * @param status 错误状态码
  * @returns 错误消息
  */
-const getErrorMessage = (status: number): string => {
+const getErrorMessage = (status: number, message: string): string => {
   const errorMap: Record<number, string> = {
     [ApiStatus.unauthorized]: 'httpMsg.unauthorized',
     [ApiStatus.forbidden]: 'httpMsg.forbidden',
@@ -110,7 +110,7 @@ const getErrorMessage = (status: number): string => {
     [ApiStatus.gatewayTimeout]: 'httpMsg.gatewayTimeout'
   }
 
-  return $t(errorMap[status] || 'httpMsg.internalServerError')
+  return $t(errorMap[status] || message || 'httpMsg.internalServerError')
 }
 
 /**
@@ -139,7 +139,7 @@ export function handleError(error: AxiosError<ErrorResponse>): never {
 
   // 处理 HTTP 状态码错误
   const message = statusCode
-    ? getErrorMessage(statusCode)
+    ? getErrorMessage(statusCode, errorMessage)
     : errorMessage || $t('httpMsg.requestFailed')
   throw new HttpError(message, statusCode || ApiStatus.error, {
     data: error.response.data,

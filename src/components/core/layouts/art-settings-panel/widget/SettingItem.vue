@@ -21,6 +21,8 @@
     <ElSelect
       v-else-if="config.type === 'select'"
       :model-value="modelValue"
+      clearable
+      filterable
       :style="config.style"
       @change="handleChange"
     >

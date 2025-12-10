@@ -46,10 +46,15 @@
   import UserDialog from './modules/user-dialog.vue'
   import { ElTag, ElMessageBox, ElImage, ElMessage } from 'element-plus'
   import { DialogType } from '@/types'
+  import { useDictStore } from '@/store/modules/dict'
+  import { DICT_TYPE_CODE } from '@/constants/dict'
 
   defineOptions({ name: 'User' })
 
   type UserListItem = Api.SystemManage.UserListItem
+
+  // 字典 store
+  const dictStore = useDictStore()
 
   // 弹窗相关
   const dialogType = ref<DialogType>('add')
@@ -147,7 +152,13 @@
           prop: 'userGender',
           label: '性别',
           sortable: true,
-          formatter: (row) => row.userGender
+          formatter: (row) => {
+            const genderLabel = dictStore.getDictLabel(
+              DICT_TYPE_CODE.USER_GENDER,
+              row.userGender || ''
+            )
+            return genderLabel || row.userGender || '未知'
+          }
         },
         {
           prop: 'userRoles',

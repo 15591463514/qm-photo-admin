@@ -187,5 +187,79 @@ declare namespace Api {
       description?: string
       enabled?: boolean
     }
+
+    /** 字典数据 */
+    interface DictData {
+      id: number
+      typeCode: string
+      typeName: string
+      typeStatus: string
+      dataLabel: string
+      dataValue: string
+      sortOrder: number
+      status: string
+      tagStyle?: string | null
+      isDefault: boolean
+      createBy?: number | null
+      createTime: string
+      updateBy?: number | null
+      updateTime?: string | null
+      remark?: string | null
+    }
+
+    /** 字典树形项（第一级是类型，第二级是数据） */
+    interface DictTreeItem {
+      typeCode: string
+      typeName: string
+      typeStatus: string
+      isType: boolean
+      children: DictData[]
+      dataCount?: number
+      createTime?: string
+    }
+
+    /** 字典树形搜索参数 */
+    interface DictTreeSearchParams {
+      typeCode?: string
+      typeName?: string
+      typeStatus?: string
+      dataLabel?: string
+      dataValue?: string
+      status?: string
+    }
+
+    /** 创建字典参数 */
+    interface CreateDictParams {
+      typeCode: string
+      typeName: string
+      dataLabel: string
+      dataValue: string
+      sortOrder?: number
+      status?: string
+      tagStyle?: string
+      isDefault?: boolean
+      remark?: string
+    }
+
+    /** 更新字典参数 */
+    interface UpdateDictParams {
+      typeCode?: string
+      typeName?: string
+      dataLabel?: string
+      dataValue?: string
+      sortOrder?: number
+      status?: string
+      tagStyle?: string
+      isDefault?: boolean
+      remark?: string
+    }
+
+    /** 更新字典类型参数 */
+    interface UpdateDictTypeParams {
+      typeCode?: string
+      typeName?: string
+      typeStatus?: string
+      remark?: string
+    }
   }
 }

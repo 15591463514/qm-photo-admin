@@ -19,7 +19,7 @@
             style="margin-top: 25px"
           >
             <ElFormItem prop="account">
-              <ElSelect v-model="formData.account" @change="setupAccount">
+              <ElSelect v-model="formData.account" clearable filterable @change="setupAccount">
                 <ElOption
                   v-for="account in accounts"
                   :key="account.key"

@@ -314,3 +314,80 @@ export function validateBankCard(value: string): boolean {
 
   return sum % 10 === 0
 }
+
+/**
+ * 验证字典编码/字典值格式
+ * @param value 待验证的字符串
+ * @returns 返回验证结果，true表示格式正确
+ * @description 规则：只能包含小写字母和下划线，开头和结尾不能是下划线
+ */
+export function validateDictCode(value: string): boolean {
+  if (!value || typeof value !== 'string') {
+    return false
+  }
+
+  const trimmedValue = value.trim()
+
+  // 只能包含小写字母和下划线
+  if (!/^[a-z_]+$/.test(trimmedValue)) {
+    return false
+  }
+
+  // 开头不能是下划线
+  if (trimmedValue.startsWith('_')) {
+    return false
+  }
+
+  // 结尾不能是下划线
+  if (trimmedValue.endsWith('_')) {
+    return false
+  }
+
+  return true
+}
+
+/**
+ * 创建字典编码/字典值的 Element Plus 表单验证器
+ * @param fieldName 字段名称，用于错误提示（如：'字典类型编码'、'字典值'）
+ * @returns 返回 Element Plus 表单验证器函数
+ */
+export function createDictCodeValidator(
+  fieldName: string = '字段',
+  options?: { allowNumbers?: boolean }
+) {
+  /** 是否允许数字 */
+  const allowNumbers = options?.allowNumbers ?? false
+  /** 字母数字下划线 */
+  const letterNumberUnderlineRegex = /^[a-z0-9_]+$/
+  /** 字母下划线 */
+  const letterUnderlineRegex = /^[a-z_]+$/
+  /** 内容校验 */
+  const contentRegex = allowNumbers ? letterNumberUnderlineRegex : letterUnderlineRegex
+
+  return (_rule: any, value: string, callback: (error?: Error | string) => void) => {
+    if (!value) {
+      callback(new Error(`请输入${fieldName}`))
+      return
+    }
+
+    // 只能包含小写字母和下划线以及数字
+    if (!contentRegex.test(value)) {
+      callback(new Error(`${fieldName}只能包含小写字母和下划线${allowNumbers ? '以及数字' : ''}`))
+      return
+    }
+
+    // 开头不能是下划线
+    if (value.startsWith('_')) {
+      callback(new Error(`${fieldName}不能以下划线开头`))
+      return
+    }
+
+    // 结尾不能是下划线
+    if (value.endsWith('_')) {
+      callback(new Error(`${fieldName}不能以下划线结尾`))
+      return
+    }
+
+    callback()
+  }
+}

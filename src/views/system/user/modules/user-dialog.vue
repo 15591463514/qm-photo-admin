@@ -8,14 +8,24 @@
         <ElInput v-model="formData.nickName" placeholder="请输入昵称（选填）" />
       </ElFormItem>
       <ElFormItem label="性别" prop="gender">
-        <ElSelect v-model="formData.gender">
-          <ElOption label="男" value="male" />
-          <ElOption label="女" value="female" />
-          <ElOption label="未知" value="unknown" />
+        <ElSelect v-model="formData.gender" clearable filterable placeholder="请选择性别">
+          <ElOption
+            v-for="option in genderOptions"
+            :key="option.value"
+            :label="option.label"
+            :value="option.value"
+          />
         </ElSelect>
       </ElFormItem>
       <ElFormItem label="角色" prop="role">
-        <ElSelect v-model="formData.role" multiple placeholder="请选择角色" :loading="roleLoading">
+        <ElSelect
+          v-model="formData.role"
+          multiple
+          clearable
+          filterable
+          placeholder="请选择角色"
+          :loading="roleLoading"
+        >
           <ElOption
             v-for="role in roleList"
             :key="role.roleId"
@@ -38,6 +48,9 @@
   import { fetchGetRoleList, fetchUpdateUser } from '@/api/system-manage'
   import type { FormInstance, FormRules } from 'element-plus'
   import { ElMessage } from 'element-plus'
+  import { useDictStore } from '@/store/modules/dict'
+  import { DICT_TYPE_CODE } from '@/constants/dict'
+  import { computed } from 'vue'
 
   interface Props {
     visible: boolean
@@ -53,9 +66,21 @@
   const props = defineProps<Props>()
   const emit = defineEmits<Emits>()
 
+  // 字典 store
+  const dictStore = useDictStore()
+
   // 角色列表数据
   const roleList = ref<Api.SystemManage.RoleListItem[]>([])
   const roleLoading = ref(false)
+
+  // 性别选项（从字典 store 获取）
+  const genderOptions = computed(() => {
+    const dicts = dictStore.getDictByType(DICT_TYPE_CODE.USER_GENDER)
+    return dicts.map((dict) => ({
+      label: dict.dataLabel,
+      value: dict.dataValue
+    }))
+  })
 
   // 对话框显示控制
   const dialogVisible = computed({
@@ -66,11 +91,18 @@
   // 表单实例
   const formRef = ref<FormInstance>()
 
+  // 获取性别默认值
+  const getDefaultGender = () => {
+    const dicts = dictStore.getDictByType(DICT_TYPE_CODE.USER_GENDER)
+    const defaultDict = dicts.find((dict) => dict.isDefault)
+    return defaultDict?.dataValue || 'unknown'
+  }
+
   // 表单数据
   const formData = reactive({
     username: '',
     nickName: '',
-    gender: 'unknown',
+    gender: getDefaultGender(),
     role: [] as string[]
   })
 
@@ -119,7 +151,7 @@
     Object.assign(formData, {
       username: row?.userName || '',
       nickName: row?.nickName || '',
-      gender: row?.userGender || 'unknown',
+      gender: row?.userGender || getDefaultGender(),
       role: Array.isArray(row?.userRoles) ? row.userRoles : []
     })
   }

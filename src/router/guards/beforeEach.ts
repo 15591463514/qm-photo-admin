@@ -41,6 +41,7 @@ import NProgress from 'nprogress'
 import { useSettingStore } from '@/store/modules/setting'
 import { useUserStore } from '@/store/modules/user'
 import { useMenuStore } from '@/store/modules/menu'
+import { useDictStore } from '@/store/modules/dict'
 import { setWorktab } from '@/utils/navigation'
 import { setPageTitle } from '@/utils/router'
 import { RoutesAlias } from '../routesAlias'
@@ -220,29 +221,33 @@ async function handleDynamicRoutes(
     // 1. 获取用户信息
     await fetchUserInfo()
 
-    // 2. 获取菜单数据
+    // 2. 初始化字典数据（在用户登录后加载）
+    const dictStore = useDictStore()
+    await dictStore.initDictData()
+
+    // 3. 获取菜单数据
     const menuList = await menuProcessor.getMenuList()
 
-    // 3. 验证菜单数据
+    // 4. 验证菜单数据
     if (!menuProcessor.validateMenuList(menuList)) {
       throw new Error('获取菜单列表失败，请重新登录')
     }
 
-    // 4. 注册动态路由
+    // 5. 注册动态路由
     routeRegistry?.register(menuList)
 
-    // 5. 保存菜单数据到 store
+    // 6. 保存菜单数据到 store
     const menuStore = useMenuStore()
     menuStore.setMenuList(menuList)
     menuStore.addRemoveRouteFns(routeRegistry?.getRemoveRouteFns() || [])
 
-    // 6. 保存 iframe 路由
+    // 7. 保存 iframe 路由
     IframeRouteManager.getInstance().save()
 
-    // 7. 验证工作标签页
+    // 8. 验证工作标签页
     useWorktabStore().validateWorktabs(router)
 
-    // 8. 验证目标路径权限
+    // 9. 验证目标路径权限
     const { homePath } = useCommon()
     const { path: validatedPath, hasPermission } = RoutePermissionValidator.validatePath(
       to.path,
@@ -250,7 +255,7 @@ async function handleDynamicRoutes(
       homePath.value || '/'
     )
 
-    // 9. 重新导航到目标路由
+    // 10. 重新导航到目标路由
     if (!hasPermission) {
       // 无权限访问，跳转到首页
       closeLoading()

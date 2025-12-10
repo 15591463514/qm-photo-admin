@@ -62,7 +62,13 @@
                 <ElInput v-model="form.realName" :disabled="!isEdit" />
               </ElFormItem>
               <ElFormItem label="性别" prop="sex" class="ml-5">
-                <ElSelect v-model="form.sex" placeholder="Select" :disabled="!isEdit">
+                <ElSelect
+                  v-model="form.sex"
+                  clearable
+                  filterable
+                  placeholder="Select"
+                  :disabled="!isEdit"
+                >
                   <ElOption
                     v-for="item in options"
                     :key="item.value"

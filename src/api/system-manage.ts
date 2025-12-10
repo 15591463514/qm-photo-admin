@@ -76,3 +76,74 @@ export function fetchGetMenuList() {
     url: '/api/v3/system/menus/simple'
   })
 }
+
+// ==================== 字典管理 ====================
+
+// 获取字典树形结构
+export function fetchGetDictTree(params: Api.SystemManage.DictTreeSearchParams) {
+  return request.get<Api.SystemManage.DictTreeItem[]>({
+    url: '/api/dict/tree',
+    params
+  })
+}
+
+// 根据字典类型获取字典数据
+export function fetchGetDictDataByType(typeCode: string, status?: string) {
+  return request.get<Api.SystemManage.DictData[]>({
+    url: `/api/dict/data/${typeCode}`,
+    params: status ? { status } : undefined
+  })
+}
+
+// 获取字典详情
+export function fetchGetDictDetail(id: number) {
+  return request.get<Api.SystemManage.DictData>({
+    url: `/api/dict/${id}`
+  })
+}
+
+// 创建字典
+export function fetchCreateDict(params: Api.SystemManage.CreateDictParams) {
+  return request.post<Api.SystemManage.DictData>({
+    url: '/api/dict',
+    params,
+    showErrorMessage: false // 禁用自动错误提示，由组件统一处理
+  })
+}
+
+// 更新字典
+export function fetchUpdateDict(id: number, params: Api.SystemManage.UpdateDictParams) {
+  return request.put<Api.SystemManage.DictData>({
+    url: `/api/dict/${id}`,
+    params,
+    showErrorMessage: false // 禁用自动错误提示，由组件统一处理
+  })
+}
+
+// 删除字典
+export function fetchDeleteDict(id: number) {
+  return request.del<Api.SystemManage.DictData>({
+    url: `/api/dict/${id}`,
+    showErrorMessage: false // 禁用自动错误提示，由组件统一处理
+  })
+}
+
+// 更新字典类型
+export function fetchUpdateDictType(
+  typeCode: string,
+  params: Api.SystemManage.UpdateDictTypeParams
+) {
+  return request.put<{ count: number }>({
+    url: `/api/dict/type/${typeCode}`,
+    params,
+    showErrorMessage: false // 禁用自动错误提示，由组件统一处理
+  })
+}
+
+// 删除字典类型
+export function fetchDeleteDictType(typeCode: string) {
+  return request.del<{ count: number }>({
+    url: `/api/dict/type/${typeCode}`,
+    showErrorMessage: false // 禁用自动错误提示，由组件统一处理
+  })
+}
