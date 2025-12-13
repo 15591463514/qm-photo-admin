@@ -19,6 +19,13 @@
       :show-reset="false"
       :show-submit="false"
     >
+      <template #icon>
+        <ElInput v-model="form.icon" placeholder="如：ri:user-line">
+          <template #append>
+            <ArtSvgIcon :icon="form.icon"></ArtSvgIcon>
+          </template>
+        </ElInput>
+      </template>
       <template #menuType>
         <ElRadioGroup v-model="form.menuType" :disabled="disableMenuType">
           <ElRadioButton value="menu" label="menu">菜单</ElRadioButton>
@@ -40,7 +47,6 @@
   import type { FormRules } from 'element-plus'
   import { ElIcon, ElTooltip } from 'element-plus'
   import { QuestionFilled } from '@element-plus/icons-vue'
-  import { formatMenuTitle } from '@/utils/router'
   import type { AppRouteRecord } from '@/types/router'
   import type { FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtForm from '@/components/core/forms/art-form/index.vue'
@@ -73,7 +79,7 @@
     id: number
     name: string
     path: string
-    label: string
+    title: string
     component: string
     icon: string
     isEnable: boolean
@@ -93,7 +99,7 @@
     authName: string
     authLabel: string
     authIcon: string
-    authSort: number
+    sortOrder: number
   }
 
   interface Props {
@@ -101,6 +107,7 @@
     editData?: AppRouteRecord | any
     type?: 'menu' | 'button'
     lockType?: boolean
+    menuRow?: AppRouteRecord | null
   }
 
   interface Emits {
@@ -111,7 +118,8 @@
   const props = withDefaults(defineProps<Props>(), {
     visible: false,
     type: 'menu',
-    lockType: false
+    lockType: false,
+    menuRow: null
   })
 
   const emit = defineEmits<Emits>()
@@ -124,7 +132,7 @@
     id: 0,
     name: '',
     path: '',
-    label: '',
+    title: '',
     component: '',
     icon: '',
     isEnable: true,
@@ -144,16 +152,16 @@
     authName: '',
     authLabel: '',
     authIcon: '',
-    authSort: 1
+    sortOrder: 1
   })
 
   const rules = reactive<FormRules>({
     name: [
-      { required: true, message: '请输入菜单名称', trigger: 'blur' },
+      { required: true, message: '请输入权限标识', trigger: 'blur' },
       { min: 2, max: 20, message: '长度在 2 到 20 个字符', trigger: 'blur' }
     ],
     path: [{ required: true, message: '请输入路由地址', trigger: 'blur' }],
-    label: [{ required: true, message: '输入权限标识', trigger: 'blur' }],
+    title: [{ required: true, message: '请输入菜单名称', trigger: 'blur' }],
     authName: [{ required: true, message: '请输入权限名称', trigger: 'blur' }],
     authLabel: [{ required: true, message: '请输入权限标识', trigger: 'blur' }]
   })
@@ -170,7 +178,7 @@
     if (form.menuType === 'menu') {
       return [
         ...baseItems,
-        { label: '菜单名称', key: 'name', type: 'input', props: { placeholder: '菜单名称' } },
+        { label: '菜单名称', key: 'title', type: 'input', props: { placeholder: '菜单名称' } },
         {
           label: createLabelTooltip(
             '路由地址',
@@ -180,7 +188,7 @@
           type: 'input',
           props: { placeholder: '如：/dashboard 或 console' }
         },
-        { label: '权限标识', key: 'label', type: 'input', props: { placeholder: '如：User' } },
+        { label: '权限标识', key: 'name', type: 'input', props: { placeholder: '如：User' } },
         {
           label: createLabelTooltip(
             '组件路径',
@@ -190,7 +198,11 @@
           type: 'input',
           props: { placeholder: '如：/system/user 或留空' }
         },
-        { label: '图标', key: 'icon', type: 'input', props: { placeholder: '如：ri:user-line' } },
+        {
+          label: '图标',
+          key: 'icon',
+          slot: 'icon'
+        },
         {
           label: createLabelTooltip(
             '角色权限',
@@ -253,7 +265,7 @@
         },
         {
           label: '权限排序',
-          key: 'authSort',
+          key: 'sortOrder',
           type: 'number',
           props: { min: 1, controlsPosition: 'right', style: { width: '100%' } }
         }
@@ -294,9 +306,9 @@
     if (form.menuType === 'menu') {
       const row = props.editData
       form.id = row.id || 0
-      form.name = formatMenuTitle(row.meta?.title || '')
+      form.name = row.name || '' // 权限标识（路由名称）
       form.path = row.path || ''
-      form.label = row.name || ''
+      form.title = row.meta?.title || '' // 菜单名称（菜单标题）
       form.component = row.component || ''
       form.icon = row.meta?.icon || ''
       form.sort = row.meta?.sort || 1
@@ -304,7 +316,7 @@
       form.keepAlive = row.meta?.keepAlive ?? false
       form.isHide = row.meta?.isHide ?? false
       form.isHideTab = row.meta?.isHideTab ?? false
-      form.isEnable = row.meta?.isEnable ?? true
+      form.isEnable = row.meta?.isEnable !== false
       form.link = row.meta?.link || ''
       form.isIframe = row.meta?.isIframe ?? false
       form.showBadge = row.meta?.showBadge ?? false
@@ -314,11 +326,21 @@
       form.roles = row.meta?.roles || []
       form.isFullPage = row.meta?.isFullPage ?? false
     } else {
+      // 按钮模式
       const row = props.editData
-      form.authName = row.title || ''
-      form.authLabel = row.authMark || ''
-      form.authIcon = row.icon || ''
-      form.authSort = row.sort || 1
+      if (row.meta?.isAuthButton) {
+        // 编辑权限按钮
+        form.authName = row.meta?.title || ''
+        form.authLabel = row.meta?.authMark || ''
+        form.authIcon = row.meta?.icon || ''
+        form.sortOrder = row.meta?.sortOrder || 1
+      } else if (row.title) {
+        // 直接传入的按钮数据
+        form.authName = row.title || ''
+        form.authLabel = row.authMark || ''
+        form.authIcon = row.icon || ''
+        form.sortOrder = row.sortOrder || 1
+      }
     }
   }
 
@@ -331,7 +353,7 @@
     try {
       await formRef.value.validate()
       emit('submit', { ...form })
-      ElMessage.success(`${isEdit.value ? '编辑' : '新增'}成功`)
+      // 不在这里显示成功消息，由父组件处理
       handleCancel()
     } catch {
       ElMessage.error('表单校验失败，请检查输入')
@@ -380,5 +402,33 @@
         form.menuType = newType
       }
     }
+  )
+
+  /**
+   * 监听如果是按钮模式，则监听 menuRow 的变化
+   */
+  watch(
+    () => {
+      return {
+        menuRow: props.menuRow,
+        menuType: form.menuType
+      }
+    },
+    ({ menuRow, menuType }) => {
+      if (!menuRow) return
+
+      if (menuType === 'button' && menuRow.children?.length) {
+        // 获取 menuRow 的 children 的 sortOrder 的最大值
+        const maxSortOrder = Math.max(...menuRow.children.map((child) => child.meta.sortOrder || 0))
+        form.sortOrder = maxSortOrder + 1
+      }
+
+      if (menuType === 'menu') {
+        // console.info('menu', menuRow)
+        form.path = menuRow.path + '/xxx'
+        form.component = form.path + '/index'
+      }
+    },
+    { deep: true }
   )
 </script>

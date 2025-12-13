@@ -10,7 +10,7 @@
 import type { AppRouteRecord } from '@/types/router'
 import { useUserStore } from '@/store/modules/user'
 import { useAppMode } from '@/hooks/core/useAppMode'
-import { fetchGetMenuList } from '@/api/system-manage'
+import { fetchGetUserMenus } from '@/api/auth'
 import { asyncRoutes } from '../routes/asyncRoutes'
 import { RoutesAlias } from '../routesAlias'
 import { formatMenuTitle } from '@/utils'
@@ -55,10 +55,43 @@ export class MenuProcessor {
 
   /**
    * 处理后端控制模式的菜单
+   * 从用户菜单接口获取当前用户有权限的菜单
    */
   private async processBackendMenu(): Promise<AppRouteRecord[]> {
-    const list = await fetchGetMenuList()
-    return this.filterEmptyMenus(list)
+    const list = await fetchGetUserMenus()
+    // 将 MenuData 转换为 AppRouteRecord
+    const convertedList = this.convertMenuDataToRouteRecord(list)
+    return this.filterEmptyMenus(convertedList)
+  }
+
+  /**
+   * 将后端返回的 MenuData 转换为 AppRouteRecord
+   */
+  private convertMenuDataToRouteRecord(menuList: Api.SystemManage.MenuData[]): AppRouteRecord[] {
+    return menuList.map((menu) => {
+      const routeRecord: AppRouteRecord = {
+        id: menu.id,
+        name: menu.name,
+        path: menu.path,
+        component: menu.component,
+        meta: {
+          title: menu.title,
+          icon: menu.icon,
+          isHide: menu.isHide ?? false,
+          isHideTab: menu.isHideTab ?? false,
+          link: menu.link,
+          isIframe: menu.isIframe ?? false,
+          keepAlive: menu.keepAlive ?? false,
+          isFirstLevel: menu.isFirstLevel ?? false,
+          fixedTab: menu.fixedTab ?? false,
+          activePath: menu.activePath,
+          isFullPage: menu.isFullPage ?? false,
+          roles: menu.roles
+        },
+        children: menu.children ? this.convertMenuDataToRouteRecord(menu.children) : undefined
+      }
+      return routeRecord
+    })
   }
 
   /**
@@ -122,7 +155,7 @@ export class MenuProcessor {
    * 验证菜单列表是否有效
    */
   validateMenuList(menuList: AppRouteRecord[]): boolean {
-    return Array.isArray(menuList) && menuList.length > 0
+    return Array.isArray(menuList) && menuList.length >= 0
   }
 
   /**

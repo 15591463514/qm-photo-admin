@@ -297,6 +297,9 @@ async function handleDynamicRoutes(
     }
 
     // 其他错误：跳转到 500 页面
+    // 标记路由已注册，避免重复请求导致无限循环
+    routeRegistry?.markAsRegistered()
+    closeLoading()
     next({ name: 'Exception500' })
   }
 }

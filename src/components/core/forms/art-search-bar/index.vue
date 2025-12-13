@@ -32,6 +32,7 @@
                 :is="getComponent(item)"
                 v-model="modelValue[item.key]"
                 v-bind="getProps(item)"
+                @keyup.enter="handleSearch"
               >
                 <!-- 下拉选择 -->
                 <template v-if="item.type === 'select' && getProps(item)?.options">

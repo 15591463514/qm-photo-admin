@@ -113,7 +113,7 @@
   import { getCssVar } from '@/utils/ui'
   import { useI18n } from 'vue-i18n'
   import { HttpError } from '@/utils/http/error'
-  import { fetchLogin } from '@/api/auth'
+  import { fetchLogin, fetchGetUserInfo } from '@/api/auth'
   import { ElNotification, type FormInstance, type FormRules } from 'element-plus'
   import { useSettingStore } from '@/store/modules/setting'
 
@@ -233,6 +233,17 @@
       // 存储 token 和登录状态
       userStore.setToken(token, refreshToken)
       userStore.setLoginStatus(true)
+
+      // 获取用户信息（包含权限）
+      try {
+        const userInfo = await fetchGetUserInfo()
+        userStore.setUserInfo(userInfo)
+        // 检查并清理工作台标签页（如果是不同用户登录）
+        userStore.checkAndClearWorktabs()
+      } catch (error) {
+        console.error('获取用户信息失败:', error)
+        // 即使获取用户信息失败，也允许登录，路由守卫会重新获取
+      }
 
       // 登录成功处理
       showLoginSuccessNotice()

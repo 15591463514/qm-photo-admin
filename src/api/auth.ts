@@ -39,3 +39,13 @@ export function fetchGetUserInfo() {
     // }
   })
 }
+
+/**
+ * 获取当前用户有权限的菜单
+ * @returns 用户可访问的菜单树
+ */
+export function fetchGetUserMenus() {
+  return request.get<Api.SystemManage.MenuData[]>({
+    url: '/api/user/menus'
+  })
+}

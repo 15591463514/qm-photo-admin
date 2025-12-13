@@ -47,23 +47,18 @@
     />
 
     <!-- 菜单权限弹窗 -->
-    <RolePermissionDialog
-      v-model="permissionDialog"
-      :role-data="currentRoleData"
-      @success="refreshData"
-    />
+    <MenuAuthDialog v-model:visible="permissionDialogVisible" :role-data="currentRoleData" />
   </div>
 </template>
 
 <script setup lang="ts">
-  import { ButtonMoreItem } from '@/components/core/forms/art-button-more/index.vue'
   import { useTable } from '@/hooks/core/useTable'
   import { fetchGetRoleList, fetchDeleteRole } from '@/api/system-manage'
-  import ArtButtonMore from '@/components/core/forms/art-button-more/index.vue'
   import RoleSearch from './modules/role-search.vue'
   import RoleEditDialog from './modules/role-edit-dialog.vue'
-  import RolePermissionDialog from './modules/role-permission-dialog.vue'
+  import MenuAuthDialog from './modules/menu-auth-dialog.vue'
   import { ElTag, ElMessageBox, ElMessage } from 'element-plus'
+  import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
 
   defineOptions({ name: 'Role' })
 
@@ -81,7 +76,7 @@
   const showSearchBar = ref(false)
 
   const dialogVisible = ref(false)
-  const permissionDialog = ref(false)
+  const permissionDialogVisible = ref(false)
   const currentRoleData = ref<RoleListItem | undefined>(undefined)
 
   const {
@@ -152,30 +147,23 @@
         {
           prop: 'operation',
           label: '操作',
-          width: 80,
+          width: 180,
           fixed: 'right',
           formatter: (row) =>
             h('div', [
-              h(ArtButtonMore, {
-                list: [
-                  {
-                    key: 'permission',
-                    label: '菜单权限',
-                    icon: 'ri:user-3-line'
-                  },
-                  {
-                    key: 'edit',
-                    label: '编辑角色',
-                    icon: 'ri:edit-2-line'
-                  },
-                  {
-                    key: 'delete',
-                    label: '删除角色',
-                    icon: 'ri:delete-bin-4-line',
-                    color: '#f56c6c'
-                  }
-                ],
-                onClick: (item: ButtonMoreItem) => buttonMoreClick(item, row)
+              h(ArtButtonTable, {
+                type: 'edit',
+                onClick: () => showDialog('edit', row)
+              }),
+              h(ArtButtonTable, {
+                type: 'delete',
+                onClick: () => deleteRole(row)
+              }),
+              h(ArtButtonTable, {
+                type: 'more',
+                iconClass: 'bg-warning/12 text-warning',
+                icon: 'ri:menu-add-line',
+                onClick: () => showPermissionDialog(row)
               })
             ])
         }
@@ -205,25 +193,6 @@
     getData()
   }
 
-  const buttonMoreClick = (item: ButtonMoreItem, row: RoleListItem) => {
-    switch (item.key) {
-      case 'permission':
-        showPermissionDialog(row)
-        break
-      case 'edit':
-        showDialog('edit', row)
-        break
-      case 'delete':
-        deleteRole(row)
-        break
-    }
-  }
-
-  const showPermissionDialog = (row?: RoleListItem) => {
-    permissionDialog.value = true
-    currentRoleData.value = row
-  }
-
   const deleteRole = async (row: RoleListItem) => {
     try {
       await ElMessageBox.confirm(`确定删除角色"${row.roleName}"吗？此操作不可恢复！`, '删除确认', {
@@ -242,5 +211,13 @@
         ElMessage.info('已取消删除')
       }
     }
+  }
+
+  /**
+   * 显示权限绑定对话框
+   */
+  const showPermissionDialog = (row: RoleListItem) => {
+    permissionDialogVisible.value = true
+    currentRoleData.value = row
   }
 </script>

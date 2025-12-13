@@ -55,17 +55,28 @@ export const useAuth = () => {
 
   /**
    * 检查是否拥有某权限标识（前后端模式通用）
-   * @param auth 权限标识
+   * @param auth 权限标识（支持字符串或数组，数组表示 OR 逻辑）
    * @returns 是否有权限
    */
-  const hasAuth = (auth: string): boolean => {
+  const hasAuth = (auth: string | string[]): boolean => {
+    // 统一转换为数组
+    const permissions = Array.isArray(auth) ? auth : [auth]
+
     // 前端模式
     if (isFrontendMode.value) {
-      return frontendAuthList.includes(auth)
+      return permissions.some((permission) => frontendAuthList.includes(permission))
     }
 
-    // 后端模式
-    return backendAuthList.some((item) => item?.authMark === auth)
+    // 后端模式：优先从用户 store 的 buttons 列表中验证权限
+    const userButtons = info.value?.buttons || []
+    if (userButtons.length > 0) {
+      return permissions.some((permission) => userButtons.includes(permission))
+    }
+
+    // 如果用户 store 中没有权限列表，则从路由 meta 中获取（兼容旧代码）
+    return permissions.some((permission) =>
+      backendAuthList.some((item) => item?.authMark === permission)
+    )
   }
 
   return {

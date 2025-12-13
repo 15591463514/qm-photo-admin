@@ -63,6 +63,7 @@
     "crypto-js": "^4.2.0",
     "echarts": "^6.0.0",
     "element-plus": "^2.11.2",
+    "es-toolkit": "^1.42.0",
     "file-saver": "^2.0.5",
     "highlight.js": "^11.10.0",
     "mitt": "^3.0.1",

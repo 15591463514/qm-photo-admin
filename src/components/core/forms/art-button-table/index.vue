@@ -1,15 +1,18 @@
 <!-- 表格按钮 -->
 <template>
-  <div
-    :class="[
-      'inline-flex items-center justify-center min-w-8 h-8 px-2.5 mr-2.5 text-sm c-p rounded-md',
-      buttonClass
-    ]"
-    :style="{ backgroundColor: buttonBgColor, color: iconColor }"
-    @click="handleClick"
-  >
-    <ArtSvgIcon :icon="iconContent" />
-  </div>
+  <ElTooltip :content="tooltipContent" effect="dark" placement="top" :offset="15" :hide-after="0">
+    <div
+      v-if="show"
+      :class="[
+        'inline-flex items-center justify-center min-w-8 h-8 px-2.5 mr-2.5 text-sm c-p rounded-md',
+        buttonClass
+      ]"
+      :style="{ backgroundColor: buttonBgColor, color: iconColor }"
+      @click="handleClick"
+    >
+      <ArtSvgIcon :icon="iconContent" />
+    </div>
+  </ElTooltip>
 </template>
 
 <script setup lang="ts">
@@ -26,9 +29,16 @@
     iconColor?: string
     /** 按钮背景色 */
     buttonBgColor?: string
+    /** 是否显示 */
+    show?: boolean
+    /** 提示内容 */
+    tooltipContent?: string
   }
 
-  const props = withDefaults(defineProps<Props>(), {})
+  const props = withDefaults(defineProps<Props>(), {
+    show: true,
+    tooltipContent: ''
+  })
 
   const emit = defineEmits<{
     (e: 'click'): void

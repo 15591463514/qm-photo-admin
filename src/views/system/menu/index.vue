@@ -19,7 +19,7 @@
         @refresh="handleRefresh"
       >
         <template #left>
-          <ElButton v-auth="'add'" @click="handleAddMenu" v-ripple> 添加菜单 </ElButton>
+          <ElButton v-auth="'menu:add'" @click="handleAddMenu" v-ripple> 添加菜单 </ElButton>
           <ElButton @click="toggleExpand" v-ripple>
             {{ isExpanded ? '收起' : '展开' }}
           </ElButton>
@@ -35,6 +35,7 @@
         :stripe="false"
         :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
         :default-expand-all="false"
+        @row-click="handleRowClick"
       />
 
       <!-- 菜单弹窗 -->
@@ -42,6 +43,7 @@
         v-model:visible="dialogVisible"
         :type="dialogType"
         :editData="editData"
+        :menuRow="menuRow"
         :lockType="lockMenuType"
         @submit="handleSubmit"
       />
@@ -55,15 +57,25 @@
   import { useTableColumns } from '@/hooks/core/useTableColumns'
   import type { AppRouteRecord } from '@/types/router'
   import MenuDialog from './modules/menu-dialog.vue'
-  import { fetchGetMenuList } from '@/api/system-manage'
-  import { ElTag, ElMessageBox } from 'element-plus'
+  import {
+    fetchGetMenuTree,
+    fetchCreateMenu,
+    fetchUpdateMenu,
+    fetchDeleteMenu
+  } from '@/api/system-manage'
+  import { ElTag, ElMessageBox, ElMessage } from 'element-plus'
+  // import { useAuth } from '@/hooks/core/useAuth'
+  import { omit } from 'es-toolkit'
 
   defineOptions({ name: 'Menus' })
+
+  // const { hasAuth } = useAuth()
 
   // 状态管理
   const loading = ref(false)
   const isExpanded = ref(false)
   const tableRef = ref()
+  const menuRow = ref<AppRouteRecord | null>(null)
 
   // 弹窗相关
   const dialogVisible = ref(false)
@@ -73,8 +85,8 @@
 
   // 搜索相关
   const initialSearchState = {
-    name: '',
-    route: ''
+    title: '',
+    path: ''
   }
 
   const formFilters = reactive({ ...initialSearchState })
@@ -83,13 +95,13 @@
   const formItems = computed(() => [
     {
       label: '菜单名称',
-      key: 'name',
+      key: 'title',
       type: 'input',
       props: { clearable: true }
     },
     {
       label: '路由地址',
-      key: 'route',
+      key: 'path',
       type: 'input',
       props: { clearable: true }
     }
@@ -100,16 +112,42 @@
   })
 
   /**
+   * 将API返回的菜单数据转换为AppRouteRecord格式
+   */
+  const convertMenuDataToRouteRecord = (menu: Api.SystemManage.MenuData): AppRouteRecord => {
+    const routeRecord: AppRouteRecord = {
+      id: menu.id,
+      name: menu.name,
+      path: menu.path,
+      component: menu.component,
+      meta: {
+        ...omit(menu, ['id', 'name', 'path', 'component', 'buttons', 'children']),
+        authList: menu.buttons
+      }
+    }
+
+    if (menu.children && menu.children.length > 0) {
+      routeRecord.children = menu.children.map(convertMenuDataToRouteRecord)
+    }
+
+    return routeRecord
+  }
+
+  /**
    * 获取菜单列表数据
    */
   const getMenuList = async (): Promise<void> => {
     loading.value = true
 
     try {
-      const list = await fetchGetMenuList()
-      tableData.value = list
+      const list = await fetchGetMenuTree({
+        title: appliedFilters.title || undefined,
+        path: appliedFilters.path || undefined
+      })
+      // 将API返回的数据转换为AppRouteRecord格式
+      tableData.value = list.map(convertMenuDataToRouteRecord)
     } catch (error) {
-      throw error instanceof Error ? error : new Error('获取菜单失败')
+      ElMessage.error(error instanceof Error ? error.message : '获取菜单失败')
     } finally {
       loading.value = false
     }
@@ -180,9 +218,16 @@
       }
     },
     {
-      prop: 'date',
-      label: '编辑时间',
-      formatter: () => '2022-3-12 12:00:00'
+      prop: 'sortOrder',
+      label: '排序',
+      formatter: (row: AppRouteRecord) => {
+        const len = row.path.split('/').length - 1
+        const typeList = ['primary', 'success', 'warning', 'danger', 'info'] as const
+        if (row.meta?.isAuthButton) {
+          return h(ElTag, { type: 'info' }, () => row.meta.sortOrder)
+        }
+        return h(ElTag, { type: typeList[len] }, () => row.meta.sortOrder)
+      }
     },
     {
       prop: 'status',
@@ -197,32 +242,43 @@
       formatter: (row: AppRouteRecord) => {
         const buttonStyle = { style: 'text-align: right' }
 
+        // 按钮权限标识
         if (row.meta?.isAuthButton) {
           return h('div', buttonStyle, [
             h(ArtButtonTable, {
               type: 'edit',
+              tooltipContent: '编辑按钮',
+              // show: hasAuth('menu:edit'),
               onClick: () => handleEditAuth(row)
             }),
             h(ArtButtonTable, {
               type: 'delete',
-              onClick: () => handleDeleteAuth()
+              tooltipContent: '删除按钮',
+              // show: hasAuth('menu:delete'),
+              onClick: () => handleDeleteAuth(row)
             })
           ])
         }
 
+        // 菜单权限标识
         return h('div', buttonStyle, [
           h(ArtButtonTable, {
             type: 'add',
-            onClick: () => handleAddAuth(),
-            title: '新增权限'
+            tooltipContent: '新增权限',
+            // show: hasAuth('menu:add'),
+            onClick: () => handleAddAuth(row)
           }),
           h(ArtButtonTable, {
             type: 'edit',
+            tooltipContent: '编辑权限',
+            // show: hasAuth('menu:edit'),
             onClick: () => handleEditMenu(row)
           }),
           h(ArtButtonTable, {
             type: 'delete',
-            onClick: () => handleDeleteMenu()
+            tooltipContent: '删除权限',
+            // show: hasAuth('menu:delete'),
+            onClick: () => handleDeleteMenu(row)
           })
         ])
       }
@@ -290,14 +346,13 @@
 
       if (item.meta?.authList?.length) {
         const authChildren: AppRouteRecord[] = item.meta.authList.map(
-          (auth: { title: string; authMark: string }) => ({
+          (auth: Api.SystemManage.MenuButton) => ({
             path: `${item.path}_auth_${auth.authMark}`,
             name: `${String(item.name)}_auth_${auth.authMark}`,
             meta: {
-              title: auth.title,
-              authMark: auth.authMark,
               isAuthButton: true,
-              parentPath: item.path
+              parentPath: item.path, // 设置父菜单路径，用于删除时查找父菜单
+              ...auth
             }
           })
         )
@@ -320,11 +375,11 @@
     const results: AppRouteRecord[] = []
 
     for (const item of items) {
-      const searchName = appliedFilters.name?.toLowerCase().trim() || ''
-      const searchRoute = appliedFilters.route?.toLowerCase().trim() || ''
+      const searchTitle = appliedFilters.title?.toLowerCase().trim() || ''
+      const searchRoute = appliedFilters.path?.toLowerCase().trim() || ''
       const menuTitle = formatMenuTitle(item.meta?.title || '').toLowerCase()
       const menuPath = (item.path || '').toLowerCase()
-      const nameMatch = !searchName || menuTitle.includes(searchName)
+      const nameMatch = !searchTitle || menuTitle.includes(searchTitle)
       const routeMatch = !searchRoute || menuPath.includes(searchRoute)
 
       if (item.children?.length) {
@@ -352,23 +407,26 @@
   })
 
   /**
-   * 添加菜单
+   * 添加菜单或者按钮
    */
   const handleAddMenu = (): void => {
     dialogType.value = 'menu'
     editData.value = null
     lockMenuType.value = true
     dialogVisible.value = true
+    menuRow.value = null
   }
 
   /**
    * 添加权限按钮
+   * @param parentRow 父菜单行数据
    */
-  const handleAddAuth = (): void => {
+  const handleAddAuth = (parentRow?: AppRouteRecord): void => {
     dialogType.value = 'menu'
     editData.value = null
     lockMenuType.value = false
     dialogVisible.value = true
+    menuRow.value = parentRow || null
   }
 
   /**
@@ -388,73 +446,241 @@
    */
   const handleEditAuth = (row: AppRouteRecord): void => {
     dialogType.value = 'button'
-    editData.value = {
-      title: row.meta?.title,
-      authMark: row.meta?.authMark
-    }
+    // 传递完整的行数据，包含parentPath等信息
+    editData.value = row
     lockMenuType.value = false
     dialogVisible.value = true
   }
 
   /**
-   * 菜单表单数据类型
+   * 将表单数据转换为API参数格式
    */
-  interface MenuFormData {
-    name: string
-    path: string
-    component?: string
-    icon?: string
-    roles?: string[]
-    sort?: number
-    [key: string]: any
+  const convertFormDataToApiParams = (
+    formData: any
+  ): Api.SystemManage.CreateMenuParams | Api.SystemManage.UpdateMenuParams => {
+    const params: Api.SystemManage.CreateMenuParams = {
+      name: formData.name, // 权限标识（路由名称）
+      path: formData.path,
+      title: formData.title, // 菜单名称（菜单标题）
+      component: formData.component,
+      icon: formData.icon,
+      isHide: formData.isHide ?? false,
+      isHideTab: formData.isHideTab ?? false,
+      link: formData.link,
+      isIframe: formData.isIframe ?? false,
+      keepAlive: formData.keepAlive ?? false,
+      isFirstLevel: formData.isFirstLevel ?? false,
+      fixedTab: formData.fixedTab ?? false,
+      activePath: formData.activePath,
+      isFullPage: formData.isFullPage ?? false,
+      sortOrder: formData.sort ?? 1,
+      status: formData.isEnable !== false ? '1' : '2',
+      roles: formData.roles
+    }
+
+    // 如果有parentId，添加到参数中
+    if (formData.parentId !== undefined) {
+      params.parentId = formData.parentId
+    }
+
+    return params
   }
 
   /**
    * 提交表单数据
    * @param formData 表单数据
    */
-  const handleSubmit = (formData: MenuFormData): void => {
-    console.log('提交数据:', formData)
-    // TODO: 调用API保存数据
-    getMenuList()
+  const handleSubmit = async (formData: any): Promise<void> => {
+    try {
+      const isButton = formData.menuType === 'button'
+      // 判断是否为编辑模式：按钮模式看是否有authMark，菜单模式看是否有id
+      const isEdit = isButton ? !!editData.value?.meta?.authMark : !!editData.value?.id
+
+      if (isButton) {
+        // 按钮模式：需要更新父菜单的buttons
+        let parentId: number | undefined
+
+        if (editData.value?.meta?.parentPath) {
+          // 从parentPath找到父菜单（编辑按钮时）
+          const parentMenu = await fetchGetMenuTree()
+          const parent = findMenuByPath(parentMenu, editData.value.meta.parentPath)
+          if (!parent || !parent.id) {
+            ElMessage.error('找不到父菜单')
+            return
+          }
+          parentId = parent.id
+        } else if (editData.value?.id) {
+          // editData是父菜单（新增按钮时）
+          parentId = editData.value.id
+        } else {
+          ElMessage.error('无法确定父菜单')
+          return
+        }
+
+        if (!parentId) {
+          ElMessage.error('无法确定父菜单ID')
+          return
+        }
+
+        // 获取父菜单详情
+        const parentMenu = await fetchGetMenuTree()
+        const parent = findMenuById(parentMenu, parentId)
+        if (!parent) {
+          ElMessage.error('找不到父菜单')
+          return
+        }
+
+        const buttons = [...(parent.buttons || [])]
+        if (isEdit && editData.value.meta?.authMark) {
+          // 更新按钮
+          const buttonIndex = buttons.findIndex(
+            (btn) => btn.authMark === editData.value.meta.authMark
+          )
+          if (buttonIndex >= 0) {
+            buttons[buttonIndex] = {
+              ...buttons[buttonIndex],
+              title: formData.authName,
+              authMark: formData.authLabel,
+              sortOrder: formData.sortOrder
+            }
+          } else {
+            ElMessage.error('找不到要更新的按钮')
+            return
+          }
+        } else {
+          // 新增按钮：检查authMark是否已存在
+          const existingButton = buttons.find((btn) => btn.authMark === formData.authLabel)
+          if (existingButton) {
+            ElMessage.error('权限标识已存在')
+            return
+          }
+          buttons.push({
+            title: formData.authName,
+            authMark: formData.authLabel,
+            sortOrder: formData.sortOrder
+          })
+        }
+
+        await fetchUpdateMenu(parentId, { buttons })
+        ElMessage.success(isEdit ? '更新成功' : '新增成功')
+      } else {
+        // 菜单模式
+        const params = convertFormDataToApiParams(formData) as any
+        if (isEdit) {
+          await fetchUpdateMenu(editData.value.id, params)
+          ElMessage.success('更新成功')
+        } else {
+          await fetchCreateMenu(params)
+          ElMessage.success('新增成功')
+        }
+      }
+
+      dialogVisible.value = false
+      await getMenuList()
+    } catch (error) {
+      ElMessage.error(error instanceof Error ? error.message : '操作失败')
+    }
+  }
+
+  /**
+   * 在菜单树中查找指定ID的菜单
+   */
+  const findMenuById = (
+    menus: Api.SystemManage.MenuData[],
+    id: number
+  ): Api.SystemManage.MenuData | null => {
+    for (const menu of menus) {
+      if (menu.id === id) {
+        return menu
+      }
+      if (menu.children) {
+        const found = findMenuById(menu.children, id)
+        if (found) return found
+      }
+    }
+    return null
   }
 
   /**
    * 删除菜单
+   * @param row 菜单行数据
    */
-  const handleDeleteMenu = async (): Promise<void> => {
+  const handleDeleteMenu = async (row: AppRouteRecord): Promise<void> => {
+    if (!row.id) {
+      ElMessage.error('菜单ID不存在')
+      return
+    }
+
     try {
       await ElMessageBox.confirm('确定要删除该菜单吗？删除后无法恢复', '提示', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
       })
+      await fetchDeleteMenu(row.id)
       ElMessage.success('删除成功')
-      getMenuList()
+      await getMenuList()
     } catch (error) {
       if (error !== 'cancel') {
-        ElMessage.error('删除失败')
+        ElMessage.error(error instanceof Error ? error.message : '删除失败')
       }
     }
   }
 
   /**
    * 删除权限按钮
+   * @param row 权限按钮行数据
    */
-  const handleDeleteAuth = async (): Promise<void> => {
+  const handleDeleteAuth = async (row: AppRouteRecord): Promise<void> => {
+    if (!row.meta?.parentPath) {
+      ElMessage.error('无法确定父菜单')
+      return
+    }
+
     try {
       await ElMessageBox.confirm('确定要删除该权限吗？删除后无法恢复', '提示', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
       })
+
+      // 找到父菜单并更新buttons
+      const parentMenu = await fetchGetMenuTree()
+      const parent = findMenuByPath(parentMenu, row.meta.parentPath)
+      if (!parent || !parent.id) {
+        ElMessage.error('找不到父菜单')
+        return
+      }
+
+      const buttons = (parent.buttons || []).filter((btn) => btn.authMark !== row.meta?.authMark)
+
+      await fetchUpdateMenu(parent.id, { buttons })
       ElMessage.success('删除成功')
-      getMenuList()
+      await getMenuList()
     } catch (error) {
       if (error !== 'cancel') {
-        ElMessage.error('删除失败')
+        ElMessage.error(error instanceof Error ? error.message : '删除失败')
       }
     }
+  }
+
+  /**
+   * 在菜单树中查找指定路径的菜单
+   */
+  const findMenuByPath = (
+    menus: Api.SystemManage.MenuData[],
+    path: string
+  ): Api.SystemManage.MenuData | null => {
+    for (const menu of menus) {
+      if (menu.path === path) {
+        return menu
+      }
+      if (menu.children) {
+        const found = findMenuByPath(menu.children, path)
+        if (found) return found
+      }
+    }
+    return null
   }
 
   /**
@@ -475,5 +701,21 @@
         processRows(filteredTableData.value)
       }
     })
+  }
+
+  /**
+   * 行点击事件
+   */
+  const handleRowClick = (row: AppRouteRecord, column: any): void => {
+    // 如果点击的是操作列、操作按钮或其父元素，则不触发展开/折叠
+    if (column?.property === 'operation') {
+      return
+    }
+
+    // 判断是否为类型节点（父级行）
+    if (row.children?.length && tableRef.value?.elTableRef) {
+      // 切换该行的展开/折叠状态
+      tableRef.value.elTableRef.toggleRowExpansion(row)
+    }
   }
 </script>
