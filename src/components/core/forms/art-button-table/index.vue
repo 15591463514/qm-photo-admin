@@ -1,6 +1,13 @@
 <!-- 表格按钮 -->
 <template>
-  <ElTooltip :content="tooltipContent" effect="dark" placement="top" :offset="15" :hide-after="0">
+  <ElTooltip
+    :disabled="tooltipContent?.length <= 1"
+    :content="tooltipContent"
+    effect="dark"
+    placement="top"
+    :offset="15"
+    :hide-after="0"
+  >
     <div
       v-if="show"
       :class="[

@@ -65,15 +65,49 @@ export class MenuProcessor {
   }
 
   /**
-   * 将后端返回的 MenuData 转换为 AppRouteRecord
+   * 将后端返回的扁平化 MenuData 转换为树形结构的 AppRouteRecord
    */
   private convertMenuDataToRouteRecord(menuList: Api.SystemManage.MenuData[]): AppRouteRecord[] {
-    return menuList.map((menu) => {
-      const routeRecord: AppRouteRecord = {
+    if (!menuList?.length) return []
+
+    const menuMap = new Map<number, Api.SystemManage.MenuData>()
+    const routeMap = new Map<number, AppRouteRecord>()
+    const rootRoutes: AppRouteRecord[] = []
+
+    // 建立菜单映射
+    menuList.forEach((menu) => {
+      if (menu.id) {
+        menuMap.set(menu.id, menu)
+      }
+    })
+
+    // 创建所有路由记录
+    menuList.forEach((menu) => {
+      if (!menu.id) return
+
+      const parentId = menu.parentId || 0
+      const parent = parentId && menuMap.get(parentId)
+
+      // 计算相对路径：如果有父菜单，从完整路径中提取相对部分
+      let relativePath = menu.path || ''
+      if (parent && parent.path) {
+        // 如果子路径以父路径开头，提取相对部分
+        if (relativePath.startsWith(parent.path)) {
+          relativePath = relativePath.slice(parent.path.length).replace(/^\//, '')
+        } else if (relativePath.startsWith('/')) {
+          // 如果子路径以 / 开头，去掉开头的 /
+          relativePath = relativePath.replace(/^\//, '')
+        }
+      }
+
+      // 一级菜单如果没有 component，设置为 Layout
+      const component = menu.component || (!parent ? RoutesAlias.Layout : undefined)
+
+      routeMap.set(menu.id, {
         id: menu.id,
         name: menu.name,
-        path: menu.path,
-        component: menu.component,
+        path: relativePath,
+        component,
         meta: {
           title: menu.title,
           icon: menu.icon,
@@ -86,12 +120,40 @@ export class MenuProcessor {
           fixedTab: menu.fixedTab ?? false,
           activePath: menu.activePath,
           isFullPage: menu.isFullPage ?? false,
-          roles: menu.roles
+          roles: menu.roles,
+          authList: menu.buttons || []
         },
-        children: menu.children ? this.convertMenuDataToRouteRecord(menu.children) : undefined
-      }
-      return routeRecord
+        children: []
+      })
     })
+
+    // 构建父子关系
+    menuList.forEach((menu) => {
+      if (!menu.id) return
+      const route = routeMap.get(menu.id)!
+      const parentId = menu.parentId || 0
+      const parent = parentId && routeMap.get(parentId)
+
+      if (parent) {
+        parent.children!.push(route)
+      } else {
+        rootRoutes.push(route)
+      }
+    })
+
+    // 清理空的 children
+    const clean = (routes: AppRouteRecord[]) => {
+      routes.forEach((route) => {
+        if (route.children?.length) {
+          clean(route.children)
+        } else {
+          delete route.children
+        }
+      })
+    }
+    clean(rootRoutes)
+
+    return rootRoutes
   }
 
   /**
@@ -141,8 +203,8 @@ export class MenuProcessor {
           return true
         }
 
-        // 如果有有效的 component，保留
-        if (item.component && item.component !== '' && item.component !== RoutesAlias.Layout) {
+        // 如果有有效的 component，保留（包括 Layout，因为一级菜单可以使用）
+        if (item.component && item.component !== '') {
           return true
         }
 

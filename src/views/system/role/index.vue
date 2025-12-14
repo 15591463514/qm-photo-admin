@@ -21,21 +21,13 @@
       >
         <template #left>
           <ElSpace wrap>
-            <ElButton @click="showDialog('add')" v-ripple>新增角色</ElButton>
+            <ElButton v-auth="'role:add'" @click="showDialog('add')" v-ripple>新增角色</ElButton>
           </ElSpace>
         </template>
       </ArtTableHeader>
 
       <!-- 表格 -->
-      <ArtTable
-        :loading="loading"
-        :data="data"
-        :columns="columns"
-        :pagination="pagination"
-        @pagination:size-change="handleSizeChange"
-        @pagination:current-change="handleCurrentChange"
-      >
-      </ArtTable>
+      <ArtTable :loading="loading" :data="data" :columns="columns"> </ArtTable>
     </ElCard>
 
     <!-- 角色编辑弹窗 -->
@@ -59,8 +51,12 @@
   import MenuAuthDialog from './modules/menu-auth-dialog.vue'
   import { ElTag, ElMessageBox, ElMessage } from 'element-plus'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+  import type { ColumnOption } from '@/types/component'
+  import { useAuth } from '@/hooks/core/useAuth'
 
   defineOptions({ name: 'Role' })
+
+  const { hasAuth } = useAuth()
 
   type RoleListItem = Api.SystemManage.RoleListItem
 
@@ -84,24 +80,18 @@
     columnChecks,
     data,
     loading,
-    pagination,
     getData,
     searchParams,
     resetSearchParams,
-    handleSizeChange,
-    handleCurrentChange,
     refreshData
   } = useTable({
     // 核心配置
     core: {
       apiFn: fetchGetRoleList,
-      apiParams: {
-        current: 1,
-        size: 20
-      },
-      // 排除 apiParams 中的属性
-      excludeParams: ['daterange'],
-      columnsFactory: () => [
+      apiParams: {},
+      // 排除 apiParams 中的属性（包括分页参数，因为角色列表不需要分页）
+      excludeParams: ['daterange', 'current', 'size'],
+      columnsFactory: (): ColumnOption<RoleListItem>[] => [
         {
           prop: 'roleId',
           label: '角色ID',
@@ -127,7 +117,7 @@
           prop: 'enabled',
           label: '角色状态',
           width: 100,
-          formatter: (row) => {
+          formatter: (row: RoleListItem) => {
             const statusConfig = row.enabled
               ? { type: 'success', text: '启用' }
               : { type: 'warning', text: '禁用' }
@@ -149,25 +139,46 @@
           label: '操作',
           width: 180,
           fixed: 'right',
-          formatter: (row) =>
+          formatter: (row: RoleListItem) =>
             h('div', [
               h(ArtButtonTable, {
                 type: 'edit',
+                show: hasAuth('role:edit'),
+                tooltipContent: '编辑角色',
                 onClick: () => showDialog('edit', row)
               }),
               h(ArtButtonTable, {
                 type: 'delete',
+                show: hasAuth('role:delete'),
                 onClick: () => deleteRole(row)
               }),
               h(ArtButtonTable, {
                 type: 'more',
                 iconClass: 'bg-warning/12 text-warning',
                 icon: 'ri:menu-add-line',
+                show: hasAuth('role:auth'),
+                tooltipContent: '绑定权限',
                 onClick: () => showPermissionDialog(row)
               })
             ])
         }
       ]
+    },
+    // 数据处理：将数组响应转换为分页格式
+    transform: {
+      responseAdapter: (response: Api.SystemManage.RoleList) => {
+        // 如果响应是数组，转换为分页格式
+        if (Array.isArray(response)) {
+          return {
+            records: response,
+            current: 1,
+            size: response.length,
+            total: response.length
+          }
+        }
+        // 如果已经是分页格式，直接返回
+        return response as any
+      }
     }
   })
 

@@ -155,7 +155,7 @@ declare namespace Api {
     }
 
     /** 角色列表 */
-    type RoleList = Api.Common.PaginatedResponse<RoleListItem>
+    type RoleList = RoleListItem[]
 
     /** 角色列表项 */
     interface RoleListItem {
@@ -169,8 +169,7 @@ declare namespace Api {
 
     /** 角色搜索参数 */
     type RoleSearchParams = Partial<
-      Pick<RoleListItem, 'roleId' | 'roleName' | 'roleCode' | 'description' | 'enabled'> &
-        Api.Common.CommonSearchParams
+      Pick<RoleListItem, 'roleId' | 'roleName' | 'roleCode' | 'description' | 'enabled'>
     >
 
     /** 创建角色参数 */

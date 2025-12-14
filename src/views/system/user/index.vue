@@ -6,11 +6,21 @@
 <template>
   <div class="user-page art-full-height">
     <!-- 搜索栏 -->
-    <UserSearch v-model="searchForm" @search="handleSearch" @reset="resetSearchParams"></UserSearch>
+    <UserSearch
+      v-show="showSearchBar"
+      v-model="searchForm"
+      @search="handleSearch"
+      @reset="resetSearchParams"
+    ></UserSearch>
 
     <ElCard class="art-table-card" shadow="never">
       <!-- 表格头部 -->
-      <ArtTableHeader v-model:columns="columnChecks" :loading="loading" @refresh="refreshData">
+      <ArtTableHeader
+        v-model:columns="columnChecks"
+        v-model:showSearchBar="showSearchBar"
+        :loading="loading"
+        @refresh="refreshData"
+      >
         <!-- 移除新增用户按钮，用户只能通过注册新增 -->
       </ArtTableHeader>
 
@@ -48,13 +58,18 @@
   import { DialogType } from '@/types'
   import { useDictStore } from '@/store/modules/dict'
   import { DICT_TYPE_CODE } from '@/constants/dict'
+  import { useAuth } from '@/hooks/core/useAuth'
 
   defineOptions({ name: 'User' })
+
+  const { hasAuth } = useAuth()
 
   type UserListItem = Api.SystemManage.UserListItem
 
   // 字典 store
   const dictStore = useDictStore()
+
+  const showSearchBar = ref(true)
 
   // 弹窗相关
   const dialogType = ref<DialogType>('add')
@@ -125,7 +140,7 @@
         {
           prop: 'userInfo',
           label: '用户名',
-          width: 200,
+          minWidth: 180,
           // visible: false, // 默认是否显示列
           formatter: (row) => {
             return h('div', { class: 'user flex-c' }, [
@@ -146,11 +161,12 @@
         {
           prop: 'nickName',
           label: '昵称',
-          minWidth: 120
+          minWidth: 180
         },
         {
           prop: 'userGender',
           label: '性别',
+          minWidth: 80,
           sortable: true,
           formatter: (row) => {
             const genderLabel = dictStore.getDictLabel(
@@ -175,7 +191,7 @@
         {
           prop: 'status',
           label: '状态',
-          width: 100,
+          minWidth: 100,
           formatter: (row) => {
             const statusConfig = getUserStatusConfig(row.status)
             return h(ElTag, { type: statusConfig.type }, () => statusConfig.text)
@@ -185,21 +201,23 @@
           prop: 'createTime',
           label: '创建日期',
           sortable: true,
-          width: 160
+          minWidth: 200
         },
         {
           prop: 'operation',
           label: '操作',
-          width: 120,
+          minWidth: 120,
           fixed: 'right', // 固定列
           formatter: (row) =>
             h('div', [
               h(ArtButtonTable, {
                 type: 'edit',
+                show: hasAuth('user:edit'),
                 onClick: () => showDialog('edit', row)
               }),
               h(ArtButtonTable, {
                 type: 'delete',
+                show: hasAuth('user:delete'),
                 onClick: () => deleteUser(row)
               })
             ])

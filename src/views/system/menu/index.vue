@@ -3,6 +3,7 @@
   <div class="menu-page art-full-height">
     <!-- 搜索栏 -->
     <ArtSearchBar
+      v-show="showSearchBar"
       v-model="formFilters"
       :items="formItems"
       :showExpand="false"
@@ -10,12 +11,17 @@
       @search="handleSearch"
     />
 
-    <ElCard class="art-table-card" shadow="never">
+    <ElCard
+      class="art-table-card"
+      shadow="never"
+      :style="{ 'margin-top': showSearchBar ? '12px' : '0' }"
+    >
       <!-- 表格头部 -->
       <ArtTableHeader
         :showZebra="false"
         :loading="loading"
         v-model:columns="columnChecks"
+        v-model:showSearchBar="showSearchBar"
         @refresh="handleRefresh"
       >
         <template #left>
@@ -64,18 +70,19 @@
     fetchDeleteMenu
   } from '@/api/system-manage'
   import { ElTag, ElMessageBox, ElMessage } from 'element-plus'
-  // import { useAuth } from '@/hooks/core/useAuth'
+  import { useAuth } from '@/hooks/core/useAuth'
   import { omit } from 'es-toolkit'
 
   defineOptions({ name: 'Menus' })
 
-  // const { hasAuth } = useAuth()
+  const { hasAuth } = useAuth()
 
   // 状态管理
   const loading = ref(false)
   const isExpanded = ref(false)
   const tableRef = ref()
   const menuRow = ref<AppRouteRecord | null>(null)
+  const showSearchBar = ref(false)
 
   // 弹窗相关
   const dialogVisible = ref(false)
@@ -248,13 +255,13 @@
             h(ArtButtonTable, {
               type: 'edit',
               tooltipContent: '编辑按钮',
-              // show: hasAuth('menu:edit'),
+              show: hasAuth('menu:edit'),
               onClick: () => handleEditAuth(row)
             }),
             h(ArtButtonTable, {
               type: 'delete',
               tooltipContent: '删除按钮',
-              // show: hasAuth('menu:delete'),
+              show: hasAuth('menu:delete'),
               onClick: () => handleDeleteAuth(row)
             })
           ])
@@ -265,19 +272,19 @@
           h(ArtButtonTable, {
             type: 'add',
             tooltipContent: '新增权限',
-            // show: hasAuth('menu:add'),
+            show: hasAuth('menu:add'),
             onClick: () => handleAddAuth(row)
           }),
           h(ArtButtonTable, {
             type: 'edit',
             tooltipContent: '编辑权限',
-            // show: hasAuth('menu:edit'),
+            show: hasAuth('menu:edit'),
             onClick: () => handleEditMenu(row)
           }),
           h(ArtButtonTable, {
             type: 'delete',
             tooltipContent: '删除权限',
-            // show: hasAuth('menu:delete'),
+            show: hasAuth('menu:delete'),
             onClick: () => handleDeleteMenu(row)
           })
         ])
@@ -351,7 +358,8 @@
             name: `${String(item.name)}_auth_${auth.authMark}`,
             meta: {
               isAuthButton: true,
-              parentPath: item.path, // 设置父菜单路径，用于删除时查找父菜单
+              parentPath: item.path, // 保留用于兼容
+              parentId: item.id, // 设置父菜单ID，用于删除时准确查找父菜单
               ...auth
             }
           })
@@ -510,8 +518,11 @@
           }
           parentId = parent.id
         } else if (editData.value?.id) {
-          // editData是父菜单（新增按钮时）
+          // editData是父菜单（新增按钮时，通过editData传递）
           parentId = editData.value.id
+        } else if (menuRow.value?.id) {
+          // menuRow是父菜单（新增按钮时，通过menuRow传递）
+          parentId = menuRow.value.id
         } else {
           ElMessage.error('无法确定父菜单')
           return
@@ -632,7 +643,11 @@
    * @param row 权限按钮行数据
    */
   const handleDeleteAuth = async (row: AppRouteRecord): Promise<void> => {
-    if (!row.meta?.parentPath) {
+    // 优先使用 parentId，如果没有则使用 parentPath（兼容旧数据）
+    const parentId = row.meta?.parentId
+    const parentPath = row.meta?.parentPath
+
+    if (!parentId && !parentPath) {
       ElMessage.error('无法确定父菜单')
       return
     }
@@ -644,15 +659,40 @@
         type: 'warning'
       })
 
-      // 找到父菜单并更新buttons
-      const parentMenu = await fetchGetMenuTree()
-      const parent = findMenuByPath(parentMenu, row.meta.parentPath)
+      let parent: Api.SystemManage.MenuData | null = null
+
+      // 优先使用 parentId 查找（更准确）
+      if (parentId && typeof parentId === 'number') {
+        const parentMenu = await fetchGetMenuTree()
+        parent = findMenuById(parentMenu, parentId)
+      } else if (parentPath) {
+        // 兼容：使用 parentPath 查找
+        const parentMenu = await fetchGetMenuTree()
+        parent = findMenuByPath(parentMenu, parentPath)
+      }
+
       if (!parent || !parent.id) {
         ElMessage.error('找不到父菜单')
         return
       }
 
-      const buttons = (parent.buttons || []).filter((btn) => btn.authMark !== row.meta?.authMark)
+      // 确保使用正确的按钮数据源：从 API 返回的 buttons 字段获取
+      const currentButtons = parent.buttons || []
+      const targetAuthMark = row.meta?.authMark
+
+      if (!targetAuthMark) {
+        ElMessage.error('无法确定要删除的权限标识')
+        return
+      }
+
+      // 过滤掉要删除的按钮（只删除匹配 authMark 的按钮）
+      const buttons = currentButtons.filter((btn) => btn.authMark !== targetAuthMark)
+
+      // 验证：确保至少删除了一个按钮
+      if (buttons.length === currentButtons.length) {
+        ElMessage.error('未找到要删除的权限按钮')
+        return
+      }
 
       await fetchUpdateMenu(parent.id, { buttons })
       ElMessage.success('删除成功')

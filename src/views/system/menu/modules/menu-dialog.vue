@@ -77,6 +77,7 @@
 
   interface MenuFormData {
     id: number
+    parentId?: number
     name: string
     path: string
     title: string
@@ -130,6 +131,7 @@
   const form = reactive<MenuFormData & { menuType: 'menu' | 'button' }>({
     menuType: 'menu',
     id: 0,
+    parentId: undefined,
     name: '',
     path: '',
     title: '',
@@ -209,8 +211,8 @@
             '仅用于前端权限模式：配置角色标识（如 R_SUPER、R_ADMIN）\n后端权限模式：无需配置'
           ),
           key: 'roles',
-          type: 'inputtag',
-          props: { placeholder: '输入角色标识后按回车，如：R_SUPER' }
+          type: 'input',
+          props: { placeholder: '请创建菜单后，在角色管理中配置', disabled: true }
         },
         {
           label: '菜单排序',
@@ -293,6 +295,7 @@
   const resetForm = (): void => {
     formRef.value?.reset()
     form.menuType = 'menu'
+    form.parentId = undefined
   }
 
   /**
@@ -306,6 +309,7 @@
     if (form.menuType === 'menu') {
       const row = props.editData
       form.id = row.id || 0
+      form.parentId = row.meta?.parentId || undefined
       form.name = row.name || '' // 权限标识（路由名称）
       form.path = row.path || ''
       form.title = row.meta?.title || '' // 菜单名称（菜单标题）
@@ -411,11 +415,18 @@
     () => {
       return {
         menuRow: props.menuRow,
-        menuType: form.menuType
+        menuType: form.menuType,
+        visible: props.visible,
+        isEdit: isEdit.value
       }
     },
-    ({ menuRow, menuType }) => {
-      if (!menuRow) return
+    ({ menuRow, menuType, visible, isEdit }) => {
+      if (!menuRow || !visible || isEdit) return
+
+      // 新增菜单时，设置 parentId
+      if (menuType === 'menu' && menuRow.id) {
+        form.parentId = menuRow.id
+      }
 
       if (menuType === 'button' && menuRow.children?.length) {
         // 获取 menuRow 的 children 的 sortOrder 的最大值

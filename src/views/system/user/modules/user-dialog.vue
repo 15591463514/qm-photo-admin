@@ -123,15 +123,11 @@
   const fetchRoleList = async () => {
     try {
       roleLoading.value = true
-      const response = await fetchGetRoleList({
-        current: 1,
-        size: 100
-      })
+      const response = await fetchGetRoleList({})
       // request 函数已经解包了 BaseResponse，直接返回 data
-      // 所以 response 就是 RoleList (PaginatedResponse<RoleListItem>)
-      // RoleList 包含 records, current, size, total
-      if (response?.records) {
-        roleList.value = response.records
+      // 所以 response 就是 RoleList (RoleListItem[])
+      if (Array.isArray(response)) {
+        roleList.value = response
       }
     } catch (error) {
       console.error('获取角色列表失败:', error)

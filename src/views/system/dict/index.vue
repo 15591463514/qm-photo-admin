@@ -2,14 +2,24 @@
 <template>
   <div class="dict-page art-full-height">
     <!-- 搜索栏 -->
-    <DictSearch v-model="searchForm" @search="handleSearch" @reset="handleReset" />
+    <DictSearch
+      v-show="showSearchBar"
+      v-model="searchForm"
+      @search="handleSearch"
+      @reset="handleReset"
+    />
 
-    <ElCard class="art-table-card" shadow="never">
+    <ElCard
+      class="art-table-card"
+      shadow="never"
+      :style="{ 'margin-top': showSearchBar ? '12px' : '0' }"
+    >
       <!-- 表格头部 -->
       <ArtTableHeader
         :showZebra="false"
         :loading="loading"
         v-model:columns="columnChecks"
+        v-model:showSearchBar="showSearchBar"
         @refresh="handleRefresh"
       >
         <template #left>
@@ -71,6 +81,7 @@
   } from '@/api/system-manage'
   import { DialogType } from '@/types'
   import { ENABLE_STATUS_CONFIG } from '@/constants/enums'
+  import { useAuth } from '@/hooks/core/useAuth'
 
   defineOptions({ name: 'Dict' })
 
@@ -80,6 +91,8 @@
   // 联合类型，用于表格行数据
   type DictRow = DictTreeItem | DictData
 
+  const { hasAuth } = useAuth()
+
   // Store
   const dictStore = useDictStore()
 
@@ -87,6 +100,7 @@
   const loading = ref(false)
   const isExpanded = ref(false)
   const tableRef = ref()
+  const showSearchBar = ref(false)
 
   // 弹窗相关
   const dialogVisible = ref(false)
@@ -288,16 +302,19 @@
           const typeNode = row as DictTreeItem
           return h('div', { class: 'dict-operation-buttons' }, [
             h(ArtButtonTable, {
+              type: 'add',
+              show: hasAuth('dict:add'),
+              onClick: () => handleAddDictForType(typeNode)
+            }),
+            h(ArtButtonTable, {
               type: 'edit',
+              show: hasAuth('dict:edit'),
               onClick: () => handleEditType(typeNode)
             }),
             h(ArtButtonTable, {
               type: 'delete',
+              show: hasAuth('dict:delete'),
               onClick: () => handleDeleteType(typeNode)
-            }),
-            h(ArtButtonTable, {
-              type: 'add',
-              onClick: () => handleAddDictForType(typeNode)
             })
           ])
         }
@@ -307,10 +324,12 @@
         return h('div', { class: 'dict-operation-buttons' }, [
           h(ArtButtonTable, {
             type: 'edit',
+            show: hasAuth('dict:edit'),
             onClick: () => handleEdit(dictData)
           }),
           h(ArtButtonTable, {
             type: 'delete',
+            show: hasAuth('dict:delete'),
             onClick: () => handleDelete(dictData)
           })
         ])
