@@ -67,7 +67,10 @@
     fetchGetMenuTree,
     fetchCreateMenu,
     fetchUpdateMenu,
-    fetchDeleteMenu
+    fetchDeleteMenu,
+    fetchCreateMenuButton,
+    fetchUpdateMenuButton,
+    fetchDeleteMenuButton
   } from '@/api/system-manage'
   import { ElTag, ElMessageBox, ElMessage } from 'element-plus'
   import { useAuth } from '@/hooks/core/useAuth'
@@ -505,8 +508,9 @@
       const isEdit = isButton ? !!editData.value?.meta?.authMark : !!editData.value?.id
 
       if (isButton) {
-        // 按钮模式：需要更新父菜单的buttons
+        // 按钮模式：使用独立的按钮接口
         let parentId: number | undefined
+        let buttonId: number | undefined
 
         if (editData.value?.meta?.parentPath) {
           // 从parentPath找到父菜单（编辑按钮时）
@@ -517,6 +521,8 @@
             return
           }
           parentId = parent.id
+          // 编辑按钮时，需要获取按钮ID
+          buttonId = editData.value.meta?.id as number
         } else if (editData.value?.id) {
           // editData是父菜单（新增按钮时，通过editData传递）
           parentId = editData.value.id
@@ -533,47 +539,27 @@
           return
         }
 
-        // 获取父菜单详情
-        const parentMenu = await fetchGetMenuTree()
-        const parent = findMenuById(parentMenu, parentId)
-        if (!parent) {
-          ElMessage.error('找不到父菜单')
-          return
-        }
-
-        const buttons = [...(parent.buttons || [])]
-        if (isEdit && editData.value.meta?.authMark) {
+        if (isEdit) {
           // 更新按钮
-          const buttonIndex = buttons.findIndex(
-            (btn) => btn.authMark === editData.value.meta.authMark
-          )
-          if (buttonIndex >= 0) {
-            buttons[buttonIndex] = {
-              ...buttons[buttonIndex],
-              title: formData.authName,
-              authMark: formData.authLabel,
-              sortOrder: formData.sortOrder
-            }
-          } else {
-            ElMessage.error('找不到要更新的按钮')
+          if (!buttonId) {
+            ElMessage.error('无法确定按钮ID')
             return
           }
-        } else {
-          // 新增按钮：检查authMark是否已存在
-          const existingButton = buttons.find((btn) => btn.authMark === formData.authLabel)
-          if (existingButton) {
-            ElMessage.error('权限标识已存在')
-            return
-          }
-          buttons.push({
+          await fetchUpdateMenuButton(parentId, buttonId, {
             title: formData.authName,
             authMark: formData.authLabel,
             sortOrder: formData.sortOrder
           })
+          ElMessage.success('更新成功')
+        } else {
+          // 新增按钮
+          await fetchCreateMenuButton(parentId, {
+            title: formData.authName,
+            authMark: formData.authLabel,
+            sortOrder: formData.sortOrder
+          })
+          ElMessage.success('新增成功')
         }
-
-        await fetchUpdateMenu(parentId, { buttons })
-        ElMessage.success(isEdit ? '更新成功' : '新增成功')
       } else {
         // 菜单模式
         const params = convertFormDataToApiParams(formData) as any
@@ -591,25 +577,6 @@
     } catch (error) {
       ElMessage.error(error instanceof Error ? error.message : '操作失败')
     }
-  }
-
-  /**
-   * 在菜单树中查找指定ID的菜单
-   */
-  const findMenuById = (
-    menus: Api.SystemManage.MenuData[],
-    id: number
-  ): Api.SystemManage.MenuData | null => {
-    for (const menu of menus) {
-      if (menu.id === id) {
-        return menu
-      }
-      if (menu.children) {
-        const found = findMenuById(menu.children, id)
-        if (found) return found
-      }
-    }
-    return null
   }
 
   /**
@@ -646,6 +613,12 @@
     // 优先使用 parentId，如果没有则使用 parentPath（兼容旧数据）
     const parentId = row.meta?.parentId
     const parentPath = row.meta?.parentPath
+    const buttonId = row.meta?.id as number
+
+    if (!buttonId) {
+      ElMessage.error('无法确定按钮ID')
+      return
+    }
 
     if (!parentId && !parentPath) {
       ElMessage.error('无法确定父菜单')
@@ -659,42 +632,29 @@
         type: 'warning'
       })
 
-      let parent: Api.SystemManage.MenuData | null = null
+      let menuId: number | null = null
 
-      // 优先使用 parentId 查找（更准确）
+      // 优先使用 parentId（更准确）
       if (parentId && typeof parentId === 'number') {
-        const parentMenu = await fetchGetMenuTree()
-        parent = findMenuById(parentMenu, parentId)
+        menuId = parentId
       } else if (parentPath) {
         // 兼容：使用 parentPath 查找
         const parentMenu = await fetchGetMenuTree()
-        parent = findMenuByPath(parentMenu, parentPath)
+        const parent = findMenuByPath(parentMenu, parentPath)
+        if (!parent || !parent.id) {
+          ElMessage.error('找不到父菜单')
+          return
+        }
+        menuId = parent.id
       }
 
-      if (!parent || !parent.id) {
-        ElMessage.error('找不到父菜单')
+      if (!menuId) {
+        ElMessage.error('无法确定父菜单ID')
         return
       }
 
-      // 确保使用正确的按钮数据源：从 API 返回的 buttons 字段获取
-      const currentButtons = parent.buttons || []
-      const targetAuthMark = row.meta?.authMark
-
-      if (!targetAuthMark) {
-        ElMessage.error('无法确定要删除的权限标识')
-        return
-      }
-
-      // 过滤掉要删除的按钮（只删除匹配 authMark 的按钮）
-      const buttons = currentButtons.filter((btn) => btn.authMark !== targetAuthMark)
-
-      // 验证：确保至少删除了一个按钮
-      if (buttons.length === currentButtons.length) {
-        ElMessage.error('未找到要删除的权限按钮')
-        return
-      }
-
-      await fetchUpdateMenu(parent.id, { buttons })
+      // 使用新的删除按钮接口
+      await fetchDeleteMenuButton(menuId, buttonId)
       ElMessage.success('删除成功')
       await getMenuList()
     } catch (error) {

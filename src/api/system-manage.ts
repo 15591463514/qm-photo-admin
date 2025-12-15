@@ -130,6 +130,64 @@ export function fetchDeleteMenu(id: number) {
   })
 }
 
+/** 创建菜单按钮 */
+export function fetchCreateMenuButton(
+  menuId: number,
+  params: {
+    title: string
+    authMark: string
+    sortOrder?: number
+  }
+) {
+  return request.post<{
+    id: number
+    menuId: number
+    title: string
+    authMark: string
+    sortOrder: number
+  }>({
+    url: `/api/menu/${menuId}/button`,
+    params,
+    showErrorMessage: false // 禁用自动错误提示，由组件统一处理
+  })
+}
+
+/** 更新菜单按钮 */
+export function fetchUpdateMenuButton(
+  menuId: number,
+  buttonId: number,
+  params: {
+    title?: string
+    authMark?: string
+    sortOrder?: number
+  }
+) {
+  return request.put<{
+    id: number
+    menuId: number
+    title: string
+    authMark: string
+    sortOrder: number
+  }>({
+    url: `/api/menu/${menuId}/button/${buttonId}`,
+    params,
+    showErrorMessage: false // 禁用自动错误提示，由组件统一处理
+  })
+}
+
+/** 删除菜单按钮 */
+export function fetchDeleteMenuButton(menuId: number, buttonId: number) {
+  return request.del<{
+    id: number
+    menuId: number
+    title: string
+    authMark: string
+  }>({
+    url: `/api/menu/${menuId}/button/${buttonId}`,
+    showErrorMessage: false // 禁用自动错误提示，由组件统一处理
+  })
+}
+
 /** ==================== 字典管理 ==================== */
 
 /** 获取字典树形结构 */

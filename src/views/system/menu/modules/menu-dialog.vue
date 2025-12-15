@@ -275,6 +275,9 @@
     }
   })
 
+  /**
+   * 对话框标题
+   */
   const dialogTitle = computed(() => {
     const type = form.menuType === 'menu' ? '菜单' : '按钮'
     return isEdit.value ? `编辑${type}` : `新建${type}`
