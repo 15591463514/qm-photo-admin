@@ -31,7 +31,9 @@
           />
         </div>
       </div>
+      <!-- 暂时不启用选择语言功能 -->
       <ElDropdown
+        v-show="false"
         v-if="shouldShowLanguage"
         @command="changeLanguage"
         popper-class="langDropDownStyle"

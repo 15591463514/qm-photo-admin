@@ -88,10 +88,12 @@
         />
 
         <!-- 国际化按钮 -->
+        <!-- 暂时不启用选择语言功能 -->
         <ElDropdown
           @command="changeLanguage"
           popper-class="langDropDownStyle"
           v-if="shouldShowLanguage"
+          v-show="false"
         >
           <ArtIconButton icon="ri:translate-2" class="language-btn text-[19px]" />
           <template #dropdown>
