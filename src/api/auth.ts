@@ -49,3 +49,16 @@ export function fetchGetUserMenus() {
     url: '/api/user/menus'
   })
 }
+
+/**
+ * 刷新 AccessToken
+ * @param refreshToken Refresh Token
+ * @returns 新的 Access Token
+ */
+export function fetchRefreshToken(refreshToken: string) {
+  return request.post<Api.Auth.RefreshTokenResponse>({
+    url: '/api/auth/refresh',
+    params: { refreshToken },
+    showErrorMessage: false // 刷新接口失败时不显示错误消息，由拦截器统一处理
+  })
+}

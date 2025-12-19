@@ -20,6 +20,7 @@ import { ApiStatus } from './status'
 import { HttpError, handleError, showError, showSuccess } from './error'
 import { $t } from '@/locales'
 import { BaseResponse } from '@/types'
+import { fetchRefreshToken } from '@/api/auth'
 
 /** 请求配置常量 */
 const REQUEST_TIMEOUT = 15000
@@ -31,6 +32,14 @@ const UNAUTHORIZED_DEBOUNCE_TIME = 3000
 /** 401防抖状态 */
 let isUnauthorizedErrorShown = false
 let unauthorizedTimer: NodeJS.Timeout | null = null
+
+/** Token 刷新相关状态 */
+let isRefreshing = false // 是否正在刷新 Token
+let failedQueue: Array<{
+  resolve: (value?: any) => void
+  reject: (error?: any) => void
+  config: InternalAxiosRequestConfig
+}> = [] // 刷新期间失败的请求队列
 
 /** 扩展 AxiosRequestConfig */
 interface ExtendedAxiosRequestConfig extends AxiosRequestConfig {
@@ -85,11 +94,24 @@ axiosInstance.interceptors.response.use(
   (response: AxiosResponse<BaseResponse>) => {
     const { code, message } = response.data
     if (code === ApiStatus.success) return response
-    if (code === ApiStatus.unauthorized) handleUnauthorizedError(message)
+    if (code === ApiStatus.unauthorized) {
+      // 异步处理 401，返回 Promise
+      return handleUnauthorizedResponse(response.config, message)
+    }
     throw createHttpError(message || $t('httpMsg.requestFailed'), code)
   },
-  (error) => {
-    if (error.response?.status === ApiStatus.unauthorized) handleUnauthorizedError()
+  async (error) => {
+    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
+
+    // 处理 401 错误
+    if (
+      error.response?.status === ApiStatus.unauthorized &&
+      originalRequest &&
+      !originalRequest._retry
+    ) {
+      return handleUnauthorizedResponse(originalRequest)
+    }
+
     return Promise.reject(handleError(error))
   }
 )
@@ -97,6 +119,86 @@ axiosInstance.interceptors.response.use(
 /** 统一创建HttpError */
 function createHttpError(message: string, code: number) {
   return new HttpError(message, code)
+}
+
+/**
+ * 处理 401 未授权响应
+ * 尝试刷新 Token，如果刷新失败则退出登录
+ */
+async function handleUnauthorizedResponse(
+  config: InternalAxiosRequestConfig,
+  message?: string
+): Promise<any> {
+  const userStore = useUserStore()
+  const { refreshToken } = userStore
+
+  // 如果没有 refreshToken，直接退出登录
+  if (!refreshToken) {
+    return handleUnauthorizedError(message)
+  }
+
+  // 如果是刷新接口本身返回 401，直接退出登录（避免死循环）
+  if (config.url?.includes('/api/auth/refresh')) {
+    return handleUnauthorizedError(message || 'Refresh Token 无效或已过期')
+  }
+
+  // 如果正在刷新，将请求加入队列等待
+  if (isRefreshing) {
+    return new Promise((resolve, reject) => {
+      failedQueue.push({ resolve, reject, config })
+    })
+  }
+
+  // 标记为正在刷新
+  isRefreshing = true
+  ;(config as any)._retry = true
+
+  try {
+    // 调用刷新接口
+    const { token: newAccessToken } = await fetchRefreshToken(refreshToken)
+
+    // 更新 AccessToken
+    userStore.setToken(newAccessToken)
+
+    // 更新请求头中的 Token
+    config.headers.set('Authorization', `Bearer ${newAccessToken}`)
+
+    // 重试原始请求
+    const response = await axiosInstance.request<BaseResponse>(config)
+
+    // 处理队列中的请求
+    processQueue(newAccessToken)
+
+    // 返回响应数据（与正常响应格式一致）
+    return response
+  } catch (error) {
+    // 刷新失败，清空队列并退出登录
+    processQueue(null, error)
+    return handleUnauthorizedError(message || 'Token 刷新失败，请重新登录')
+  } finally {
+    isRefreshing = false
+  }
+}
+
+/**
+ * 处理请求队列
+ * @param newAccessToken 新的 AccessToken（如果刷新成功）
+ * @param error 错误对象（如果刷新失败）
+ */
+function processQueue(newAccessToken: string | null, error?: any) {
+  failedQueue.forEach(({ resolve, reject, config }) => {
+    if (newAccessToken) {
+      // 刷新成功，更新 Token 并重试请求
+      config.headers.set('Authorization', `Bearer ${newAccessToken}`)
+      axiosInstance.request(config).then(resolve).catch(reject)
+    } else {
+      // 刷新失败，拒绝请求
+      reject(error || createHttpError($t('httpMsg.unauthorized'), ApiStatus.unauthorized))
+    }
+  })
+
+  // 清空队列
+  failedQueue = []
 }
 
 /** 处理401错误（带防抖） */
