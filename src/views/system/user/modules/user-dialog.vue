@@ -45,7 +45,8 @@
 </template>
 
 <script setup lang="ts">
-  import { fetchGetRoleList, fetchUpdateUser } from '@/api/system-manage'
+  import { fetchGetRoleList } from '@/api/role'
+  import { fetchUpdateUser } from '@/api/user'
   import type { FormInstance, FormRules } from 'element-plus'
   import { ElMessage } from 'element-plus'
   import { useDictStore } from '@/store/modules/dict'

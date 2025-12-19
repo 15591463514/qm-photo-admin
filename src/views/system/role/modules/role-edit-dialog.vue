@@ -34,7 +34,7 @@
 
 <script setup lang="ts">
   import type { FormInstance, FormRules } from 'element-plus'
-  import { fetchCreateRole, fetchUpdateRole } from '@/api/system-manage'
+  import { fetchCreateRole, fetchUpdateRole } from '@/api/role'
   import { ElMessage } from 'element-plus'
   import { createRoleCodeValidator } from '@/utils/form/validator'
 

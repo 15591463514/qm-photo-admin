@@ -45,7 +45,7 @@
 
 <script setup lang="ts">
   import { useTable } from '@/hooks/core/useTable'
-  import { fetchGetRoleList, fetchDeleteRole } from '@/api/system-manage'
+  import { fetchGetRoleList, fetchDeleteRole } from '@/api/role'
   import RoleSearch from './modules/role-search.vue'
   import RoleEditDialog from './modules/role-edit-dialog.vue'
   import MenuAuthDialog from './modules/menu-auth-dialog.vue'

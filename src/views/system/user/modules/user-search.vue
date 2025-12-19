@@ -14,7 +14,7 @@
   import { useDictStore } from '@/store/modules/dict'
   import { DICT_TYPE_CODE } from '@/constants/dict'
   import { computed, ref, onMounted } from 'vue'
-  import { fetchGetRoleList } from '@/api/system-manage'
+  import { fetchGetRoleList } from '@/api/role'
   import { ElMessage } from 'element-plus'
 
   interface Props {

@@ -58,11 +58,8 @@
 
 <script setup lang="ts">
   import { ElTree, ElCheckbox, ElText, ElIcon, ElMessage } from 'element-plus'
-  import {
-    fetchGetMenuTree,
-    fetchGetRolePermissions,
-    fetchAssignRolePermissions
-  } from '@/api/system-manage'
+  import { fetchGetMenuTree } from '@/api/menu'
+  import { fetchGetRolePermissions, fetchAssignRolePermissions } from '@/api/role'
 
   interface Props {
     visible: boolean

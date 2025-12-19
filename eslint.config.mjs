@@ -60,6 +60,14 @@ export default [
       'no-unexpected-multiline': 'error' // 禁止空余的多行
     }
   },
+  // 针对 .d.ts 类型声明文件的特殊规则
+  {
+    files: ['**/*.d.ts'],
+    rules: {
+      // 对于全局类型声明文件，使用 triple-slash-reference 是正确的做法
+      '@typescript-eslint/triple-slash-reference': 'off'
+    }
+  },
   // vue 规则
   {
     files: ['**/*.vue'],

@@ -28,7 +28,7 @@
  */
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { fetchGetDictTree } from '@/api/system-manage'
+import { fetchGetDictTree } from '@/api/dict'
 import { ElMessage } from 'element-plus'
 import { EnableStatus } from '@/constants/enums'
 import { HttpError } from '@/utils/http/error'

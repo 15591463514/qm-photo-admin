@@ -79,7 +79,7 @@
     fetchUpdateDict,
     fetchDeleteDict,
     fetchDeleteDictType
-  } from '@/api/system-manage'
+  } from '@/api/dict'
   import { DialogType } from '@/types'
   import { ENABLE_STATUS_CONFIG } from '@/constants/enums'
   import { useAuth } from '@/hooks/core/useAuth'

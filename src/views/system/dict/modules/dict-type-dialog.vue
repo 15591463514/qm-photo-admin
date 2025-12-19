@@ -44,7 +44,7 @@
 <script setup lang="ts">
   import { ref, watch, computed } from 'vue'
   import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
-  import { fetchUpdateDictType } from '@/api/system-manage'
+  import { fetchUpdateDictType } from '@/api/dict'
   import { DialogType } from '@/types'
   import { EnableStatus } from '@/constants/enums'
   import { createDictNameValidator, createDictCodeValueValidator } from '@/utils/form/validator'

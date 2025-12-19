@@ -71,7 +71,7 @@
     fetchCreateMenuButton,
     fetchUpdateMenuButton,
     fetchDeleteMenuButton
-  } from '@/api/system-manage'
+  } from '@/api/menu'
   import { ElTag, ElMessageBox, ElMessage } from 'element-plus'
   import { useAuth } from '@/hooks/core/useAuth'
   import { omit } from 'es-toolkit'
