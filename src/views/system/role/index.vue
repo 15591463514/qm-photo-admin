@@ -80,7 +80,7 @@
     columnChecks,
     data,
     loading,
-    getData,
+    getDataDebounced,
     searchParams,
     resetSearchParams,
     refreshData
@@ -201,7 +201,8 @@
 
     // 搜索参数赋值
     Object.assign(searchParams, { ...filtersParams, startTime, endTime })
-    getData()
+    // 使用防抖版本触发搜索
+    getDataDebounced()
   }
 
   const deleteRole = async (row: RoleListItem) => {

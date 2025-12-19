@@ -304,14 +304,20 @@ function useTableImpl<TApiFn extends (params: any) => Promise<any>>(
         params || {}
       ) as TParams
 
-      // 剔除不需要的参数
-      if (excludeParams.length > 0) {
-        const filteredParams = { ...requestParams }
-        excludeParams.forEach((key) => {
-          delete (filteredParams as Record<string, unknown>)[key]
-        })
-        requestParams = filteredParams as TParams
-      }
+      // 剔除不需要的参数和 undefined/null/空字符串值
+      const filteredParams: Record<string, unknown> = {}
+      Object.keys(requestParams).forEach((key) => {
+        const value = (requestParams as Record<string, unknown>)[key]
+        // 排除 excludeParams 中的字段
+        if (excludeParams.includes(key)) {
+          return
+        }
+        // 排除 undefined、null 和空字符串
+        if (value !== undefined && value !== null && value !== '') {
+          filteredParams[key] = value
+        }
+      })
+      requestParams = filteredParams as TParams
 
       // 检查缓存
       if (useCache && cache) {
@@ -564,11 +570,11 @@ function useTableImpl<TApiFn extends (params: any) => Promise<any>>(
     }
   }
 
-  // 全量刷新：清空所有缓存，重新获取数据（适用于手动刷新按钮）
+  // 全量刷新：清空所有缓存，重新获取数据（适用于手动刷新按钮，带防抖）
   const refreshData = async (): Promise<void> => {
     debouncedGetDataByPage.cancel()
     clearCache(CacheInvalidationStrategy.CLEAR_ALL, '手动刷新')
-    await getData()
+    await debouncedGetDataByPage()
   }
 
   // 轻量刷新：仅清空当前搜索条件的缓存，保持分页状态（适用于定时刷新）

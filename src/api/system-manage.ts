@@ -194,7 +194,8 @@ export function fetchDeleteMenuButton(menuId: number, buttonId: number) {
 export function fetchGetDictTree(params: Api.SystemManage.DictTreeSearchParams) {
   return request.get<Api.SystemManage.DictTreeItem[]>({
     url: '/api/dict/tree',
-    params
+    params,
+    showErrorMessage: false // 禁用自动错误提示，由调用方统一处理
   })
 }
 

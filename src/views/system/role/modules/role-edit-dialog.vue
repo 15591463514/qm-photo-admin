@@ -36,6 +36,7 @@
   import type { FormInstance, FormRules } from 'element-plus'
   import { fetchCreateRole, fetchUpdateRole } from '@/api/system-manage'
   import { ElMessage } from 'element-plus'
+  import { createRoleCodeValidator } from '@/utils/form/validator'
 
   type RoleListItem = Api.SystemManage.RoleListItem
 
@@ -78,7 +79,7 @@
     ],
     roleCode: [
       { required: true, message: '请输入角色编码', trigger: 'blur' },
-      { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
+      { validator: createRoleCodeValidator('角色编码'), trigger: 'blur' }
     ],
     description: [{ max: 500, message: '描述长度不能超过500个字符', trigger: 'blur' }]
   })

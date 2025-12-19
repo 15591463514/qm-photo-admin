@@ -85,15 +85,15 @@ export function validateTelPhone(value: string): boolean {
  * 验证用户账号
  * @param value 账号字符串
  * @returns 返回验证结果，true表示格式正确
- * @description 规则：字母开头，5-20位，支持字母、数字、下划线
+ * @description 规则：字母开头，3-20位，支持字母、数字、下划线
  */
 export function validateAccount(value: string): boolean {
   if (!value || typeof value !== 'string') {
     return false
   }
 
-  // 字母开头，5-20位，支持字母、数字、下划线
-  const accountRegex = /^[a-zA-Z][a-zA-Z0-9_]{4,19}$/
+  // 字母开头，3-20位，支持字母、数字、下划线
+  const accountRegex = /^[a-zA-Z][a-zA-Z0-9_]{2,19}$/
   return accountRegex.test(value.trim())
 }
 
@@ -385,6 +385,206 @@ export function createDictCodeValidator(
     // 结尾不能是下划线
     if (value.endsWith('_')) {
       callback(new Error(`${fieldName}不能以下划线结尾`))
+      return
+    }
+
+    callback()
+  }
+}
+
+/**
+ * 验证正则表达式集合
+ */
+export const ValidationRegex = {
+  /** 账号：字母开头，3-20位，支持字母、数字、下划线 */
+  account: /^[a-zA-Z][a-zA-Z0-9_]{2,19}$/,
+  /** 小写字母：只能是小写字母 */
+  lowercaseLetters: /^[a-z]+$/,
+  /** 字母、数字、短横线、下划线 */
+  alphanumericDashUnderscore: /^[a-zA-Z0-9_-]+$/,
+  /** 字母、数字、短横线、下划线、冒号（小写） */
+  alphanumericDashUnderscoreLowercase: /^[a-z0-9_:-]+$/,
+  /** 不允许特殊字符和emoji（允许中文、字母、数字、空格、常用标点） */
+  noSpecialCharsOrEmoji:
+    /^[\u4e00-\u9fa5a-zA-Z0-9\s，。！？、；：""''（）【】《》.,!?;:()[\]<>-]+$/,
+  /** 不允许空格 */
+  noSpaces: /^\S+$/,
+  /** 路由路径：只能包含 /、字母、数字、下划线、横线 */
+  routePath: /^[/a-zA-Z0-9_-]+$/
+}
+
+/**
+ * 创建账号验证器（Element Plus 表单验证器）
+ * @param fieldName 字段名称，用于错误提示
+ * @returns 返回 Element Plus 表单验证器函数
+ */
+export function createAccountValidator(fieldName: string = '账号') {
+  return (_rule: any, value: string, callback: (error?: Error | string) => void) => {
+    if (!value) {
+      callback(new Error(`请输入${fieldName}`))
+      return
+    }
+
+    const trimmedValue = value.trim()
+
+    // 检查长度（3-20个字符）
+    if (trimmedValue.length < 3 || trimmedValue.length > 20) {
+      callback(new Error(`${fieldName}长度为3-20个字符`))
+      return
+    }
+
+    // 检查格式：字母开头，支持字母、数字、下划线
+    if (!ValidationRegex.account.test(trimmedValue)) {
+      callback(new Error(`${fieldName}必须以字母开头，只能包含字母、数字和下划线`))
+      return
+    }
+
+    callback()
+  }
+}
+
+/**
+ * 创建昵称验证器（不能包含空格，最大16字符）
+ * @param fieldName 字段名称，用于错误提示
+ * @returns 返回 Element Plus 表单验证器函数
+ */
+export function createNicknameValidator(fieldName: string = '昵称') {
+  return (_rule: any, value: string, callback: (error?: Error | string) => void) => {
+    if (!value) {
+      callback(new Error(`请输入${fieldName}`))
+      return
+    }
+
+    // 检查是否包含空格
+    if (/\s/.test(value)) {
+      callback(new Error(`${fieldName}不能包含空格`))
+      return
+    }
+
+    // 检查长度
+    if (value.length > 16) {
+      callback(new Error(`${fieldName}不能超过16个字符`))
+      return
+    }
+
+    callback()
+  }
+}
+
+/**
+ * 创建角色编码验证器（只能是小写字母，最大16字符）
+ * @param fieldName 字段名称，用于错误提示
+ * @returns 返回 Element Plus 表单验证器函数
+ */
+export function createRoleCodeValidator(fieldName: string = '角色编码') {
+  return (_rule: any, value: string, callback: (error?: Error | string) => void) => {
+    if (!value) {
+      callback(new Error(`请输入${fieldName}`))
+      return
+    }
+
+    // 检查格式：只能是小写字母
+    if (!ValidationRegex.lowercaseLetters.test(value)) {
+      callback(new Error(`${fieldName}只能包含小写字母`))
+      return
+    }
+
+    // 检查长度
+    if (value.length > 16) {
+      callback(new Error(`${fieldName}不能超过16个字符`))
+      return
+    }
+
+    callback()
+  }
+}
+
+/**
+ * 创建字典类型名称/字典标签验证器（不可输入特殊字符和emoji，最大16字符）
+ * @param fieldName 字段名称，用于错误提示
+ * @returns 返回 Element Plus 表单验证器函数
+ */
+export function createDictNameValidator(fieldName: string = '名称') {
+  return (_rule: any, value: string, callback: (error?: Error | string) => void) => {
+    if (!value) {
+      callback(new Error(`请输入${fieldName}`))
+      return
+    }
+
+    // 检查是否包含特殊字符或emoji
+    if (!ValidationRegex.noSpecialCharsOrEmoji.test(value)) {
+      callback(new Error(`${fieldName}不能包含特殊字符和emoji`))
+      return
+    }
+
+    // 检查长度
+    if (value.length > 16) {
+      callback(new Error(`${fieldName}不能超过16个字符`))
+      return
+    }
+
+    callback()
+  }
+}
+
+/**
+ * 创建字典类型编码/字典值验证器（字母、短横线、下划线、数字、冒号，最大maxLength字符）
+ * @param fieldName 字段名称，用于错误提示
+ * @param maxLength 最大长度，默认16
+ * @returns 返回 Element Plus 表单验证器函数
+ */
+export function createDictCodeValueValidator(fieldName: string = '编码', maxLength: number = 16) {
+  return (_rule: any, value: string, callback: (error?: Error | string) => void) => {
+    if (!value) {
+      callback(new Error(`请输入${fieldName}`))
+      return
+    }
+
+    // 检查格式：字母、短横线、下划线、数字、冒号
+    if (!ValidationRegex.alphanumericDashUnderscoreLowercase.test(value)) {
+      callback(new Error(`${fieldName}只能包含字母、短横线、下划线、数字和冒号`))
+      return
+    }
+
+    // 检查长度
+    if (value.length > maxLength) {
+      callback(new Error(`${fieldName}不能超过16个字符`))
+      return
+    }
+
+    callback()
+  }
+}
+
+/**
+ * 创建标签样式验证器（字母、短横线、下划线、数字，最大16字符）
+ * @param fieldName 字段名称，用于错误提示
+ * @returns 返回 Element Plus 表单验证器函数
+ */
+export function createTagStyleValidator(fieldName: string = '标签样式') {
+  return createDictCodeValueValidator(fieldName)
+}
+
+/**
+ * 创建路由路径验证器（只能包含 /、字母、数字、下划线、横线）
+ * @param fieldName 字段名称，用于错误提示
+ * @param required 是否必填，默认 false
+ * @returns 返回 Element Plus 表单验证器函数
+ */
+export function createRoutePathValidator(fieldName: string = '路径', required: boolean = false) {
+  return (_rule: any, value: string, callback: (error?: Error | string) => void) => {
+    if (!value) {
+      if (required) {
+        callback(new Error(`请输入${fieldName}`))
+        return
+      }
+      callback()
+      return
+    }
+
+    // 检查格式：只能包含 /、字母、数字、下划线、横线
+    if (!ValidationRegex.routePath.test(value)) {
+      callback(new Error(`${fieldName}只能包含 /、字母、数字、下划线和横线`))
       return
     }
 

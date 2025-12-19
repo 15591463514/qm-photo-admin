@@ -77,7 +77,11 @@
   import { DialogType } from '@/types'
   import { EnableStatus } from '@/constants/enums'
   import { useDictStore } from '@/store/modules/dict'
-  import { createDictCodeValidator } from '@/utils/form/validator'
+  import {
+    createDictNameValidator,
+    createDictCodeValueValidator,
+    createTagStyleValidator
+  } from '@/utils/form/validator'
 
   defineOptions({ name: 'DictDialog' })
 
@@ -170,16 +174,23 @@
   const rules: FormRules = {
     typeCode: [
       { required: true, message: '请输入字典类型编码', trigger: 'blur' },
-      { validator: createDictCodeValidator('字典类型编码'), trigger: 'blur' }
+      { validator: createDictCodeValueValidator('字典类型编码'), trigger: 'blur' }
     ],
-    typeName: [{ required: true, message: '请输入字典类型名称', trigger: 'blur' }],
-    dataLabel: [{ required: true, message: '请输入字典标签', trigger: 'blur' }],
+    typeName: [
+      { required: true, message: '请输入字典类型名称', trigger: 'blur' },
+      { validator: createDictNameValidator('字典类型名称'), trigger: 'blur' }
+    ],
+    dataLabel: [
+      { required: true, message: '请输入字典标签', trigger: 'blur' },
+      { validator: createDictNameValidator('字典标签'), trigger: 'blur' }
+    ],
     dataValue: [
       { required: true, message: '请输入字典值', trigger: 'blur' },
-      { validator: createDictCodeValidator('字典值', { allowNumbers: true }), trigger: 'blur' }
+      { validator: createDictCodeValueValidator('字典值'), trigger: 'blur' }
     ],
     sortOrder: [{ required: true, message: '请输入排序', trigger: 'blur' }],
-    status: [{ required: true, message: '请选择状态', trigger: 'change' }]
+    status: [{ required: true, message: '请选择状态', trigger: 'change' }],
+    tagStyle: [{ validator: createTagStyleValidator('标签样式'), trigger: 'blur' }]
   }
 
   /**

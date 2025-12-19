@@ -31,6 +31,8 @@ import { ref } from 'vue'
 import { fetchGetDictTree } from '@/api/system-manage'
 import { ElMessage } from 'element-plus'
 import { EnableStatus } from '@/constants/enums'
+import { HttpError } from '@/utils/http/error'
+import { ApiStatus } from '@/utils/http/status'
 
 /**
  * 字典状态管理
@@ -90,6 +92,7 @@ export const useDictStore = defineStore(
      * 初始化字典数据
      * 从服务器获取所有字典数据并存储到 store 中
      * 只存储启用的字典类型和启用的字典数据
+     * 如果用户没有权限（403），则静默失败，不显示错误消息
      */
     const initDictData = async () => {
       try {
@@ -123,6 +126,12 @@ export const useDictStore = defineStore(
         dictMap.value = map
         dictList.value = list
       } catch (error) {
+        // 如果是403权限错误，静默失败，不显示错误消息（用户可能没有字典查看权限）
+        if (error instanceof HttpError && error.code === ApiStatus.forbidden) {
+          console.warn('用户没有字典查看权限，跳过字典数据加载')
+          return
+        }
+        // 其他错误才显示错误消息
         console.error('初始化字典数据失败:', error)
         ElMessage.error('加载字典数据失败')
       }

@@ -126,24 +126,26 @@
 
   /**
    * 验证用户名格式
-   * 只能包含字母、数字和下划线
+   * 字母开头，3-20位，支持字母、数字、下划线
    */
   const validateUsername = (_rule: any, value: string, callback: (error?: Error) => void) => {
     if (!value) {
-      callback(new Error(t('register.placeholder.username')))
+      callback(new Error('请输入账号'))
       return
     }
 
-    // 检查长度
-    if (value.length < USERNAME_MIN_LENGTH || value.length > USERNAME_MAX_LENGTH) {
-      callback(new Error(t('register.rule.usernameLength')))
+    const trimmedValue = value.trim()
+
+    // 检查长度（3-20个字符）
+    if (trimmedValue.length < USERNAME_MIN_LENGTH || trimmedValue.length > USERNAME_MAX_LENGTH) {
+      callback(new Error(`账号长度为${USERNAME_MIN_LENGTH}-${USERNAME_MAX_LENGTH}个字符`))
       return
     }
 
-    // 检查格式：只能包含字母、数字和下划线
-    const usernameRegex = /^[a-zA-Z0-9_]+$/
-    if (!usernameRegex.test(value)) {
-      callback(new Error(t('register.rule.usernameFormat') || '用户名只能包含字母、数字和下划线'))
+    // 检查格式：字母开头，支持字母、数字、下划线
+    const accountRegex = /^[a-zA-Z][a-zA-Z0-9_]{2,19}$/
+    if (!accountRegex.test(trimmedValue)) {
+      callback(new Error('账号必须以字母开头，只能包含字母、数字和下划线'))
       return
     }
 

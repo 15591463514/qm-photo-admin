@@ -81,11 +81,11 @@
 
   // 搜索表单
   const searchForm = ref({
-    userName: undefined,
-    nickName: undefined,
+    name: undefined,
+    roleId: undefined,
+    status: undefined,
     userGender: undefined,
-    userEmail: undefined,
-    status: '1'
+    daterange: undefined
   })
 
   // 用户状态配置
@@ -114,7 +114,7 @@
     data,
     loading,
     pagination,
-    getData,
+    getDataDebounced,
     searchParams,
     resetSearchParams,
     handleSizeChange,
@@ -126,9 +126,10 @@
       apiFn: fetchGetUserList,
       apiParams: {
         current: 1,
-        size: 20,
-        ...searchForm.value
+        size: 20
       },
+      // 排除日期范围参数，将在 handleSearch 中处理
+      excludeParams: ['daterange'],
       // 自定义分页字段映射，未设置时将使用全局配置 tableConfig.ts 中的 paginationKey
       // paginationKey: {
       //   current: 'pageNum',
@@ -250,10 +251,40 @@
    * @param params 参数
    */
   const handleSearch = (params: Record<string, any>) => {
-    console.log(params)
-    // 搜索参数赋值
-    Object.assign(searchParams, params)
-    getData()
+    // 处理日期区间参数，把 daterange 转换为 startTime 和 endTime
+    const { daterange, ...filtersParams } = params
+    const [startTime, endTime] = Array.isArray(daterange) ? daterange : [null, null]
+
+    // 构建搜索参数，过滤掉 undefined 值
+    const searchParamsData: Record<string, any> = {}
+    Object.keys(filtersParams).forEach((key) => {
+      if (
+        filtersParams[key] !== undefined &&
+        filtersParams[key] !== null &&
+        filtersParams[key] !== ''
+      ) {
+        searchParamsData[key] = filtersParams[key]
+      }
+    })
+    if (startTime) {
+      searchParamsData.startTime = startTime
+    }
+    if (endTime) {
+      searchParamsData.endTime = endTime
+    }
+
+    // 搜索参数赋值（先清空再赋值，确保未选中的条件被清除）
+    Object.keys(searchParams).forEach((key) => {
+      if (!['current', 'size'].includes(key)) {
+        delete (searchParams as Record<string, any>)[key]
+      }
+    })
+    Object.assign(searchParams, searchParamsData)
+
+    // 使用防抖版本重置到第一页并触发搜索
+    const paramsRecord = searchParams as Record<string, unknown>
+    paramsRecord.current = 1
+    getDataDebounced()
   }
 
   /**

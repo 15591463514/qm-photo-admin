@@ -51,6 +51,11 @@
   import type { FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtForm from '@/components/core/forms/art-form/index.vue'
   import { useWindowSize } from '@vueuse/core'
+  import {
+    createDictCodeValueValidator,
+    createDictNameValidator,
+    createRoutePathValidator
+  } from '@/utils/form/validator'
 
   const { width } = useWindowSize()
 
@@ -160,12 +165,26 @@
   const rules = reactive<FormRules>({
     name: [
       { required: true, message: '请输入权限标识', trigger: 'blur' },
-      { min: 2, max: 20, message: '长度在 2 到 20 个字符', trigger: 'blur' }
+      { validator: createDictCodeValueValidator('权限标识', 30), trigger: 'blur' }
     ],
-    path: [{ required: true, message: '请输入路由地址', trigger: 'blur' }],
-    title: [{ required: true, message: '请输入菜单名称', trigger: 'blur' }],
-    authName: [{ required: true, message: '请输入权限名称', trigger: 'blur' }],
-    authLabel: [{ required: true, message: '请输入权限标识', trigger: 'blur' }]
+    path: [
+      { required: true, message: '请输入路由地址', trigger: 'blur' },
+      { validator: createRoutePathValidator('路由地址', true), trigger: 'blur' }
+    ],
+    component: [{ validator: createRoutePathValidator('组件路径', false), trigger: 'blur' }],
+    activePath: [{ validator: createRoutePathValidator('激活路径', false), trigger: 'blur' }],
+    title: [
+      { required: true, message: '请输入菜单名称', trigger: 'blur' },
+      { validator: createDictNameValidator('菜单名称'), trigger: 'blur' }
+    ],
+    authName: [
+      { required: true, message: '请输入权限名称', trigger: 'blur' },
+      { validator: createDictNameValidator('权限名称'), trigger: 'blur' }
+    ],
+    authLabel: [
+      { required: true, message: '请输入权限标识', trigger: 'blur' },
+      { validator: createDictCodeValueValidator('权限标识', 30), trigger: 'blur' }
+    ]
   })
 
   /**

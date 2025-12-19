@@ -23,7 +23,7 @@
         @refresh="handleRefresh"
       >
         <template #left>
-          <ElButton v-auth="'add'" @click="handleAdd" v-ripple> 新增字典 </ElButton>
+          <ElButton v-auth="'dict:add'" @click="handleAdd" v-ripple> 新增字典 </ElButton>
           <ElButton @click="toggleExpand" v-ripple>
             {{ isExpanded ? '收起' : '展开' }}
           </ElButton>
@@ -73,6 +73,7 @@
   import DictSearch from './modules/dict-search.vue'
   import DictDialog from './modules/dict-dialog.vue'
   import DictTypeDialog from './modules/dict-type-dialog.vue'
+  import { createSmartDebounce } from '@/utils/table/tableUtils'
   import {
     fetchCreateDict,
     fetchUpdateDict,
@@ -352,6 +353,9 @@
     }
   }
 
+  // 防抖版本的刷新函数
+  const debouncedRefreshDictData = createSmartDebounce(refreshDictData, 300)
+
   /**
    * 切换展开/收起
    */
@@ -409,10 +413,10 @@
 
   /**
    * 处理刷新
-   * 从服务器刷新字典数据
+   * 从服务器刷新字典数据（带防抖）
    */
   const handleRefresh = () => {
-    refreshDictData()
+    debouncedRefreshDictData()
   }
 
   /**
@@ -456,8 +460,8 @@
       })
       await fetchDeleteDict(row.id)
       ElMessage.success('删除成功')
-      // 刷新 store 中的数据
-      await refreshDictData()
+      // 刷新 store 中的数据（带防抖）
+      await debouncedRefreshDictData()
     } catch (error) {
       if (error !== 'cancel') {
         ElMessage.error(error instanceof Error ? error.message : '删除失败')
@@ -481,8 +485,8 @@
         ElMessage.success('更新成功')
       }
       dialogVisible.value = false
-      // 刷新 store 中的数据
-      await refreshDictData()
+      // 刷新 store 中的数据（带防抖）
+      await debouncedRefreshDictData()
     } catch (error) {
       ElMessage.error(error instanceof Error ? error.message : '操作失败')
     }
@@ -511,8 +515,8 @@
       )
       await fetchDeleteDictType(row.typeCode)
       ElMessage.success('删除成功')
-      // 刷新 store 中的数据
-      await refreshDictData()
+      // 刷新 store 中的数据（带防抖）
+      await debouncedRefreshDictData()
     } catch (error) {
       if (error !== 'cancel') {
         ElMessage.error(error instanceof Error ? error.message : '删除失败')
@@ -524,14 +528,14 @@
    * 处理字典类型弹窗提交
    */
   const handleTypeSubmit = async () => {
-    // 刷新 store 中的数据
-    await refreshDictData()
+    // 刷新 store 中的数据（带防抖）
+    await debouncedRefreshDictData()
   }
 
   onMounted(() => {
-    // 如果 store 中没有数据，则刷新；否则直接使用 store 中的数据
+    // 如果 store 中没有数据，则刷新；否则直接使用 store 中的数据（带防抖）
     if (dictStore.treeData.length === 0) {
-      refreshDictData()
+      debouncedRefreshDictData()
     }
   })
 </script>

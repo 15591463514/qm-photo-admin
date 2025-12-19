@@ -75,6 +75,7 @@
   import { ElTag, ElMessageBox, ElMessage } from 'element-plus'
   import { useAuth } from '@/hooks/core/useAuth'
   import { omit } from 'es-toolkit'
+  import { createSmartDebounce } from '@/utils/table/tableUtils'
 
   defineOptions({ name: 'Menus' })
 
@@ -307,19 +308,22 @@
     getMenuList()
   }
 
+  // 防抖版本的 getMenuList
+  const debouncedGetMenuList = createSmartDebounce(getMenuList, 300)
+
   /**
    * 执行搜索
    */
   const handleSearch = (): void => {
     Object.assign(appliedFilters, { ...formFilters })
-    getMenuList()
+    debouncedGetMenuList()
   }
 
   /**
-   * 刷新菜单列表
+   * 刷新菜单列表（带防抖）
    */
   const handleRefresh = (): void => {
-    getMenuList()
+    debouncedGetMenuList()
   }
 
   /**
@@ -573,7 +577,7 @@
       }
 
       dialogVisible.value = false
-      await getMenuList()
+      await debouncedGetMenuList()
     } catch (error) {
       ElMessage.error(error instanceof Error ? error.message : '操作失败')
     }
@@ -597,7 +601,7 @@
       })
       await fetchDeleteMenu(row.id)
       ElMessage.success('删除成功')
-      await getMenuList()
+      await debouncedGetMenuList()
     } catch (error) {
       if (error !== 'cancel') {
         ElMessage.error(error instanceof Error ? error.message : '删除失败')
@@ -656,7 +660,7 @@
       // 使用新的删除按钮接口
       await fetchDeleteMenuButton(menuId, buttonId)
       ElMessage.success('删除成功')
-      await getMenuList()
+      await debouncedGetMenuList()
     } catch (error) {
       if (error !== 'cancel') {
         ElMessage.error(error instanceof Error ? error.message : '删除失败')

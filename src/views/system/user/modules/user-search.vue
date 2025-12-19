@@ -13,7 +13,9 @@
 <script setup lang="ts">
   import { useDictStore } from '@/store/modules/dict'
   import { DICT_TYPE_CODE } from '@/constants/dict'
-  import { computed } from 'vue'
+  import { computed, ref, onMounted } from 'vue'
+  import { fetchGetRoleList } from '@/api/system-manage'
+  import { ElMessage } from 'element-plus'
 
   interface Props {
     modelValue: Record<string, any>
@@ -29,12 +31,24 @@
   // 字典 store
   const dictStore = useDictStore()
 
+  // 角色列表
+  const roleList = ref<Api.SystemManage.RoleListItem[]>([])
+  const roleLoading = ref(false)
+
   // 性别选项（从字典 store 获取）
   const genderOptions = computed(() => {
     const dicts = dictStore.getDictByType(DICT_TYPE_CODE.USER_GENDER)
     return dicts.map((dict) => ({
       label: dict.dataLabel,
       value: dict.dataValue
+    }))
+  })
+
+  // 角色选项
+  const roleOptions = computed(() => {
+    return roleList.value.map((role) => ({
+      label: role.roleName,
+      value: role.roleId
     }))
   })
 
@@ -46,9 +60,7 @@
   })
 
   // 校验规则
-  const rules = {
-    // userName: [{ required: true, message: '请输入用户名', trigger: 'blur' }]
-  }
+  const rules = {}
 
   // 动态 options
   const statusOptions = ref<{ label: string; value: string; disabled?: boolean }[]>([])
@@ -67,31 +79,49 @@
     })
   }
 
+  /**
+   * 获取角色列表
+   */
+  const fetchRoleList = async () => {
+    try {
+      roleLoading.value = true
+      const response = await fetchGetRoleList({})
+      if (Array.isArray(response)) {
+        roleList.value = response
+      }
+    } catch (error) {
+      console.error('获取角色列表失败:', error)
+      ElMessage.error('获取角色列表失败')
+    } finally {
+      roleLoading.value = false
+    }
+  }
+
   onMounted(async () => {
     statusOptions.value = await fetchStatusOptions()
+    await fetchRoleList()
   })
 
-  // 表单配置
+  // 表单配置（顺序：名称、角色、状态、性别、注册日期）
   const formItems = computed(() => [
     {
-      label: '用户名',
-      key: 'userName',
+      label: '名称',
+      key: 'name',
       type: 'input',
-      placeholder: '请输入用户名',
+      placeholder: '请输入用户名/昵称',
       clearable: true
     },
     {
-      label: '昵称',
-      key: 'nickName',
-      type: 'input',
-      placeholder: '请输入昵称',
-      clearable: true
-    },
-    {
-      label: '邮箱',
-      key: 'userEmail',
-      type: 'input',
-      props: { placeholder: '请输入邮箱' }
+      label: '角色',
+      key: 'roleId',
+      type: 'select',
+      props: {
+        clearable: true,
+        filterable: true,
+        placeholder: '请选择角色',
+        options: roleOptions.value,
+        loading: roleLoading.value
+      }
     },
     {
       label: '状态',
@@ -113,6 +143,25 @@
         filterable: true,
         placeholder: '请选择性别',
         options: genderOptions.value
+      }
+    },
+    {
+      label: '注册日期',
+      key: 'daterange',
+      type: 'datetime',
+      props: {
+        style: { width: '100%' },
+        placeholder: '请选择日期范围',
+        type: 'daterange',
+        rangeSeparator: '至',
+        startPlaceholder: '开始日期',
+        endPlaceholder: '结束日期',
+        valueFormat: 'YYYY-MM-DD',
+        shortcuts: [
+          { text: '今日', value: [new Date(), new Date()] },
+          { text: '最近一周', value: [new Date(Date.now() - 604800000), new Date()] },
+          { text: '最近一个月', value: [new Date(Date.now() - 2592000000), new Date()] }
+        ]
       }
     }
   ])

@@ -191,6 +191,7 @@ declare namespace Api {
     /** 角色权限项 */
     interface RolePermissionItem {
       menuId: number
+      hasMenuPermission?: boolean // 是否有菜单权限，默认 false
       buttonIds?: number[]
     }
 

@@ -47,6 +47,7 @@
   import { fetchUpdateDictType } from '@/api/system-manage'
   import { DialogType } from '@/types'
   import { EnableStatus } from '@/constants/enums'
+  import { createDictNameValidator, createDictCodeValueValidator } from '@/utils/form/validator'
 
   const props = defineProps<{
     visible: boolean
@@ -74,11 +75,11 @@
   const rules: FormRules = {
     typeCode: [
       { required: true, message: '请输入字典类型编码', trigger: 'blur' },
-      { max: 100, message: '字典类型编码长度不能超过100个字符', trigger: 'blur' }
+      { validator: createDictCodeValueValidator('字典类型编码'), trigger: 'blur' }
     ],
     typeName: [
       { required: true, message: '请输入字典类型名称', trigger: 'blur' },
-      { max: 100, message: '字典类型名称长度不能超过100个字符', trigger: 'blur' }
+      { validator: createDictNameValidator('字典类型名称'), trigger: 'blur' }
     ],
     typeStatus: [{ required: true, message: '请选择类型状态', trigger: 'change' }]
   }

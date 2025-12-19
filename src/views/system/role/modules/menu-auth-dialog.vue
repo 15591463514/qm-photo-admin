@@ -129,6 +129,7 @@
 
       // 设置选中的权限
       for (const perm of permissions) {
+        // 只要有菜单权限或按钮权限，就添加到权限记录中
         if (perm.hasMenuPermission || (perm.buttonIds && perm.buttonIds.length > 0)) {
           selectedPermissions.value.set(perm.menuId, {
             buttonIds: perm.buttonIds || []
@@ -140,10 +141,10 @@
       await nextTick()
 
       if (treeRef.value) {
-        // 设置菜单节点选中状态（有菜单权限或按钮权限的都选中）
-        for (const [menuId] of selectedPermissions.value.entries()) {
-          if (menuId) {
-            treeRef.value.setChecked(menuId, true, false)
+        // 只勾选有菜单权限的菜单节点（不包括只有按钮权限的）
+        for (const perm of permissions) {
+          if (perm.hasMenuPermission && perm.menuId) {
+            treeRef.value.setChecked(perm.menuId, true, false)
           }
         }
       }
@@ -163,6 +164,68 @@
   }
 
   /**
+   * 递归查找菜单的所有子菜单ID
+   */
+  const getAllChildrenIds = (menu: Api.SystemManage.MenuData): number[] => {
+    const childrenIds: number[] = []
+    if (menu.children && menu.children.length > 0) {
+      for (const child of menu.children) {
+        if (child.id) {
+          childrenIds.push(child.id)
+          // 递归获取子菜单的子菜单
+          childrenIds.push(...getAllChildrenIds(child))
+        }
+      }
+    }
+    return childrenIds
+  }
+
+  /**
+   * 构建菜单ID到菜单对象的映射（扁平化）
+   */
+  const buildMenuMap = (
+    menus: Api.SystemManage.MenuData[]
+  ): Map<number, Api.SystemManage.MenuData> => {
+    const menuMap = new Map<number, Api.SystemManage.MenuData>()
+
+    const traverse = (menuList: Api.SystemManage.MenuData[]) => {
+      for (const menu of menuList) {
+        if (menu.id) {
+          menuMap.set(menu.id, menu)
+        }
+        if (menu.children && menu.children.length > 0) {
+          traverse(menu.children)
+        }
+      }
+    }
+
+    traverse(menus)
+    return menuMap
+  }
+
+  /**
+   * 递归查找菜单的所有父菜单ID（向上查找）
+   */
+  const getAllParentIds = (menuId: number, menus: Api.SystemManage.MenuData[]): number[] => {
+    const parentIds: number[] = []
+    const menuMap = buildMenuMap(menus)
+
+    let currentMenuId: number | undefined = menuId
+
+    // 向上查找所有父菜单
+    while (currentMenuId) {
+      const menu = menuMap.get(currentMenuId)
+      if (!menu || !menu.parentId || menu.parentId === 0) {
+        break
+      }
+      parentIds.push(menu.parentId)
+      currentMenuId = menu.parentId
+    }
+
+    return parentIds
+  }
+
+  /**
    * 处理菜单节点勾选
    */
   const handleCheck = (data: Api.SystemManage.MenuData, checked: any) => {
@@ -172,22 +235,105 @@
     const isChecked = checkedKeys.includes(data.id)
 
     if (isChecked) {
-      // 选中菜单时，设置菜单权限，选中所有按钮权限
-      selectedPermissions.value.set(data.id, {
-        buttonIds: data.buttons?.map((button) => button.id!).filter((id) => id !== undefined) || []
-      })
-      // 只要勾选菜单，应该勾选父菜单
-      if (data.parentId) {
-        treeRef.value?.setChecked(data.parentId, true, false)
+      // 选中菜单时，只设置菜单权限（不自动选中按钮权限）
+      if (!selectedPermissions.value.has(data.id)) {
+        selectedPermissions.value.set(data.id, {
+          buttonIds: []
+        })
+      }
+
+      // 递归向上勾选所有父菜单
+      const parentIds = getAllParentIds(data.id, menuTree.value)
+      if (parentIds.length > 0 && treeRef.value) {
+        for (const parentId of parentIds) {
+          treeRef.value.setChecked(parentId, true, false)
+          // 同时设置父菜单的权限（如果没有按钮权限，只设置菜单权限）
+          if (!selectedPermissions.value.has(parentId)) {
+            selectedPermissions.value.set(parentId, {
+              buttonIds: []
+            })
+          }
+        }
       }
     } else {
-      // 取消选中菜单时，移除菜单权限和所有按钮权限
-      selectedPermissions.value.delete(data.id)
+      // 取消选中菜单时，只移除菜单权限（不自动移除按钮权限）
+      const perm = selectedPermissions.value.get(data.id)
+      if (perm) {
+        if (perm.buttonIds.length === 0) {
+          // 如果没有按钮权限，完全移除
+          selectedPermissions.value.delete(data.id)
+        } else {
+          // 如果还有按钮权限，保留按钮权限（只移除菜单权限标记）
+          // 注意：按钮权限和菜单权限独立，取消菜单不影响按钮权限
+          // 但按钮权限需要菜单权限才能生效，所以这里保留按钮权限数据
+          // 实际使用时，后端会检查菜单权限
+        }
+      }
+
+      // 递归向下取消所有子菜单的选中
+      const childrenIds = getAllChildrenIds(data)
+      if (childrenIds.length > 0 && treeRef.value) {
+        for (const childId of childrenIds) {
+          treeRef.value.setChecked(childId, false, false)
+          // 只移除菜单权限，保留按钮权限
+          const childPerm = selectedPermissions.value.get(childId)
+          if (childPerm) {
+            if (childPerm.buttonIds.length === 0) {
+              selectedPermissions.value.delete(childId)
+            }
+            // 如果有按钮权限，保留按钮权限数据
+          }
+        }
+      }
+
+      // 检查父菜单：如果父菜单下的所有子菜单都没有勾选（只判断菜单权限，不判断按钮权限），则取消父菜单
+      if (data.parentId && data.parentId !== 0 && treeRef.value) {
+        const parentMenu = findMenuById(data.parentId, menuTree.value)
+        if (parentMenu) {
+          const parentChildrenIds = getAllChildrenIds(parentMenu)
+          // 检查所有子菜单是否都没有被勾选（只判断菜单权限）
+          const hasAnyChildChecked = parentChildrenIds.some((childId) => {
+            return treeRef.value?.getCheckedKeys().includes(childId)
+          })
+
+          // 如果所有子菜单都没有被勾选，且父菜单被勾选，则取消父菜单
+          if (!hasAnyChildChecked) {
+            const isParentChecked = treeRef.value.getCheckedKeys().includes(data.parentId)
+            if (isParentChecked) {
+              treeRef.value.setChecked(data.parentId, false, false)
+              const parentPerm = selectedPermissions.value.get(data.parentId)
+              if (parentPerm && parentPerm.buttonIds.length === 0) {
+                selectedPermissions.value.delete(data.parentId)
+              }
+            }
+          }
+        }
+      }
     }
   }
 
   /**
+   * 在菜单树中查找指定ID的菜单
+   */
+  const findMenuById = (
+    menuId: number,
+    menus: Api.SystemManage.MenuData[]
+  ): Api.SystemManage.MenuData | null => {
+    for (const menu of menus) {
+      if (menu.id === menuId) {
+        return menu
+      }
+      if (menu.children && menu.children.length > 0) {
+        const found = findMenuById(menuId, menu.children)
+        if (found) return found
+      }
+    }
+    return null
+  }
+
+  /**
    * 处理按钮勾选
+   * 按钮权限和菜单权限独立，不进行联动
    */
   const handleButtonCheck = (menuId: number, buttonId: number, checked: boolean) => {
     // 获取或创建权限记录
@@ -207,59 +353,93 @@
       }
     }
 
-    // 更新权限记录
+    // 更新权限记录（不联动菜单勾选状态）
     if (existingPerm.buttonIds.length > 0) {
       selectedPermissions.value.set(menuId, existingPerm)
-      // 在树中选中菜单（因为按钮权限需要菜单权限）
-      if (treeRef.value) {
-        treeRef.value.setChecked(menuId, true, false)
-      }
     } else {
-      // 如果所有按钮都取消，移除记录
-      selectedPermissions.value.delete(menuId)
-      // 在树中取消选中菜单
-      if (treeRef.value) {
-        treeRef.value.setChecked(menuId, false, false)
+      // 如果所有按钮都取消，且没有菜单权限，则移除记录
+      const menuChecked = treeRef.value?.getCheckedKeys().includes(menuId)
+      if (!menuChecked) {
+        selectedPermissions.value.delete(menuId)
+      } else {
+        // 如果菜单还选中着，保留记录但清空按钮权限
+        selectedPermissions.value.set(menuId, {
+          buttonIds: []
+        })
       }
     }
   }
 
   /**
    * 收集所有选中的权限（包括子菜单）
+   * 确保如果子菜单被选中，父菜单也被包含
    */
   const collectSelectedPermissions = (): Api.SystemManage.RolePermissionItem[] => {
     const permissions: Api.SystemManage.RolePermissionItem[] = []
 
-    // 递归收集所有选中的菜单
-    const collectMenus = (menus: Api.SystemManage.MenuData[]) => {
-      for (const menu of menus) {
-        // 如果菜单有权限记录（菜单权限或按钮权限）
-        if (menu.id && selectedPermissions.value.has(menu.id)) {
-          const perm = selectedPermissions.value.get(menu.id)!
+    // 获取所有勾选的菜单ID（树节点选中状态）
+    const checkedKeys = treeRef.value?.getCheckedKeys() || []
+    const checkedMenuIds = new Set<number>(
+      checkedKeys.filter((key): key is number => typeof key === 'number')
+    )
 
-          // 如果有按钮权限，添加到权限列表
-          if (perm.buttonIds.length > 0) {
-            permissions.push({
-              menuId: menu.id,
-              buttonIds: perm.buttonIds
-            })
-          } else {
-            // 如果只有菜单权限（没有按钮权限），也添加到权限列表
-            permissions.push({
-              menuId: menu.id,
-              buttonIds: undefined
-            })
+    // 收集所有有权限记录的菜单ID（包括只有按钮权限的）
+    const menuIdSet = new Set<number>()
+    for (const [menuId] of selectedPermissions.value.entries()) {
+      menuIdSet.add(menuId)
+    }
+
+    // 确保如果子菜单被选中，父菜单也被包含
+    const finalMenuIds = new Set<number>(menuIdSet)
+    for (const menuId of menuIdSet) {
+      const parentIds = getAllParentIds(menuId, menuTree.value)
+      for (const parentId of parentIds) {
+        finalMenuIds.add(parentId)
+      }
+    }
+
+    // 过滤父菜单：如果父菜单下的所有子菜单都没有勾选（只判断菜单权限，不判断按钮权限），则移除父菜单
+    const filteredMenuIds = new Set<number>(finalMenuIds)
+    for (const menuId of finalMenuIds) {
+      const menu = findMenuById(menuId, menuTree.value)
+      if (menu && menu.children && menu.children.length > 0) {
+        // 检查所有子菜单是否都没有被勾选（只判断菜单权限）
+        const childrenIds = getAllChildrenIds(menu)
+        const hasAnyChildChecked = childrenIds.some((childId) => {
+          return checkedMenuIds.has(childId)
+        })
+
+        // 如果所有子菜单都没有被勾选，且父菜单本身也没有按钮权限，则移除父菜单
+        if (!hasAnyChildChecked) {
+          const parentPerm = selectedPermissions.value.get(menuId)
+          const hasParentButtonPermissions =
+            parentPerm && parentPerm.buttonIds && parentPerm.buttonIds.length > 0
+          const isParentChecked = checkedMenuIds.has(menuId)
+
+          // 如果父菜单没有被勾选，且没有按钮权限，则移除
+          if (!isParentChecked && !hasParentButtonPermissions) {
+            filteredMenuIds.delete(menuId)
           }
-        }
-
-        // 递归处理子菜单
-        if (menu.children && menu.children.length > 0) {
-          collectMenus(menu.children)
         }
       }
     }
 
-    collectMenus(menuTree.value)
+    // 构建权限列表
+    for (const menuId of filteredMenuIds) {
+      const perm = selectedPermissions.value.get(menuId)
+      const hasMenuPermission = checkedMenuIds.has(menuId) // 树节点是否被勾选
+      const hasButtonPermissions = perm && perm.buttonIds && perm.buttonIds.length > 0
+
+      // 只有当有菜单权限或按钮权限时才添加到权限列表
+      if (hasMenuPermission || hasButtonPermissions) {
+        permissions.push({
+          menuId,
+          hasMenuPermission, // 明确标识是否有菜单权限
+          buttonIds: hasButtonPermissions ? perm.buttonIds : undefined
+        })
+      }
+    }
+
     return permissions
   }
 

@@ -181,8 +181,42 @@
     rememberPassword: true
   })
 
+  const USERNAME_MIN_LENGTH = 3
+  const USERNAME_MAX_LENGTH = 20
+
   const rules = computed<FormRules>(() => ({
-    username: [{ required: true, message: t('login.placeholder.username'), trigger: 'blur' }],
+    username: [
+      { required: true, message: '请输入账号', trigger: 'blur' },
+      {
+        validator: (_rule: any, value: string, callback: (error?: Error) => void) => {
+          if (!value) {
+            callback()
+            return
+          }
+
+          const trimmedValue = value.trim()
+
+          // 检查长度（3-20个字符）
+          if (
+            trimmedValue.length < USERNAME_MIN_LENGTH ||
+            trimmedValue.length > USERNAME_MAX_LENGTH
+          ) {
+            callback(new Error(`账号长度为${USERNAME_MIN_LENGTH}-${USERNAME_MAX_LENGTH}个字符`))
+            return
+          }
+
+          // 检查格式：字母开头，支持字母、数字、下划线
+          const accountRegex = /^[a-zA-Z][a-zA-Z0-9_]{2,19}$/
+          if (!accountRegex.test(trimmedValue)) {
+            callback(new Error('账号必须以字母开头，只能包含字母、数字和下划线'))
+            return
+          }
+
+          callback()
+        },
+        trigger: 'blur'
+      }
+    ],
     password: [{ required: true, message: t('login.placeholder.password'), trigger: 'blur' }]
   }))
 
