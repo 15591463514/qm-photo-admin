@@ -18,7 +18,8 @@
             @keyup.enter="handleSubmit"
             style="margin-top: 25px"
           >
-            <ElFormItem prop="account">
+            <!-- 角色选择功能已注释，前端登录不需要选择角色 -->
+            <!-- <ElFormItem prop="account">
               <ElSelect v-model="formData.account" clearable filterable @change="setupAccount">
                 <ElOption
                   v-for="account in accounts"
@@ -29,7 +30,7 @@
                   <span>{{ account.label }}</span>
                 </ElOption>
               </ElSelect>
-            </ElFormItem>
+            </ElFormItem> -->
             <ElFormItem prop="username">
               <ElInput
                 class="custom-height"
@@ -108,7 +109,6 @@
 </template>
 
 <script setup lang="ts">
-  import AppConfig from '@/config'
   import { useUserStore } from '@/store/modules/user'
   import { getCssVar } from '@/utils/ui'
   import { useI18n } from 'vue-i18n'
@@ -129,39 +129,40 @@
     formKey.value++
   })
 
-  type AccountKey = 'super' | 'admin' | 'user'
+  // 角色选择相关代码已注释，前端登录不需要选择角色
+  // type AccountKey = 'super' | 'admin' | 'user'
 
-  export interface Account {
-    key: AccountKey
-    label: string
-    userName: string
-    password: string
-    roles: string[]
-  }
+  // export interface Account {
+  //   key: AccountKey
+  //   label: string
+  //   userName: string
+  //   password: string
+  //   roles: string[]
+  // }
 
-  const accounts = computed<Account[]>(() => [
-    {
-      key: 'super',
-      label: t('login.roles.super'),
-      userName: 'Dawn',
-      password: 'mm123456',
-      roles: ['R_SUPER']
-    },
-    {
-      key: 'admin',
-      label: t('login.roles.admin'),
-      userName: 'Admin',
-      password: '123456',
-      roles: ['R_ADMIN']
-    },
-    {
-      key: 'user',
-      label: t('login.roles.user'),
-      userName: 'User',
-      password: '123456',
-      roles: ['R_USER']
-    }
-  ])
+  // const accounts = computed<Account[]>(() => [
+  //   {
+  //     key: 'super',
+  //     label: t('login.roles.super'),
+  //     userName: 'Dawn',
+  //     password: 'mm123456',
+  //     roles: ['R_SUPER']
+  //   },
+  //   {
+  //     key: 'admin',
+  //     label: t('login.roles.admin'),
+  //     userName: 'Admin',
+  //     password: '123456',
+  //     roles: ['R_ADMIN']
+  //   },
+  //   {
+  //     key: 'user',
+  //     label: t('login.roles.user'),
+  //     userName: 'User',
+  //     password: '123456',
+  //     roles: ['R_USER']
+  //   }
+  // ])
 
   const dragVerify = ref()
 
@@ -171,11 +172,10 @@
   const isPassing = ref(false)
   const isClickPass = ref(false)
 
-  const systemName = AppConfig.systemInfo.name
   const formRef = ref<FormInstance>()
 
   const formData = reactive({
-    account: '',
+    // account: '', // 角色选择功能已注释
     username: '',
     password: '',
     rememberPassword: true
@@ -222,17 +222,18 @@
 
   const loading = ref(false)
 
-  onMounted(() => {
-    setupAccount('super')
-  })
+  // 角色选择功能已注释，不再自动设置账号
+  // onMounted(() => {
+  //   setupAccount('super')
+  // })
 
-  // 设置账号
-  const setupAccount = (key: AccountKey) => {
-    const selectedAccount = accounts.value.find((account: Account) => account.key === key)
-    formData.account = key
-    formData.username = selectedAccount?.userName ?? ''
-    formData.password = selectedAccount?.password ?? ''
-  }
+  // 设置账号（角色选择功能已注释）
+  // const setupAccount = (key: AccountKey) => {
+  //   const selectedAccount = accounts.value.find((account: Account) => account.key === key)
+  //   formData.account = key
+  //   formData.username = selectedAccount?.userName ?? ''
+  //   formData.password = selectedAccount?.password ?? ''
+  // }
 
   // 登录
   const handleSubmit = async () => {
@@ -313,7 +314,7 @@
         type: 'success',
         duration: 2500,
         zIndex: 10000,
-        message: `${t('login.success.message')}, ${systemName}!`
+        message: `${t('login.success.message')}, ${userStore.info?.nickName || userStore.info?.userName}!`
       })
     }, 1000)
   }
