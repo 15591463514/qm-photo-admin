@@ -19,5 +19,3 @@ setupErrorHandle(app)
 
 app.use(language)
 app.mount('#app')
-
-console.log('admin')

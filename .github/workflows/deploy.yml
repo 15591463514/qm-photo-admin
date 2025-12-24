@@ -22,7 +22,6 @@ on:
 env:
   NODE_VERSION: '20'
   PNPM_VERSION: '8'
-  DEPLOY_PATH: '/www/wwwroot/admin'
 
 jobs:
   build-and-deploy:
@@ -76,27 +75,26 @@ jobs:
           ls -lh deploy.tar.gz
 
       - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-      - name: Add server to known hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+          echo "✅ SSH 配置完成"
 
       - name: Deploy to server
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
         run: |
           echo "🚀 开始部署到服务器..."
 
           # 上传部署包
-          scp deploy.tar.gz ${SSH_USER}@${SSH_HOST}:/tmp/deploy.tar.gz
+          scp -o StrictHostKeyChecking=no deploy.tar.gz ${SSH_USER}@${SSH_HOST}:/tmp/deploy.tar.gz
 
           # 执行部署脚本
-          ssh ${SSH_USER}@${SSH_HOST} << EOF
+          ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} << EOF
             set -e
             
             DEPLOY_PATH="${DEPLOY_PATH}"
@@ -134,7 +132,7 @@ jobs:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}
         run: |
-          ssh ${SSH_USER}@${SSH_HOST} << 'EOF'
+          ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} << 'EOF'
             # 测试 Nginx 配置
             if command -v nginx &> /dev/null; then
               if sudo nginx -t 2>/dev/null || nginx -t 2>/dev/null; then
@@ -150,6 +148,12 @@ jobs:
           EOF
         continue-on-error: true
 
+      - name: Cleanup SSH
+        if: always()
+        run: |
+          rm -f ~/.ssh/id_rsa
+          echo "✅ SSH 密钥已清理"
+
       - name: Deployment summary
         if: always()
         run: |
@@ -160,4 +164,4 @@ jobs:
           echo "- **作者**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
           echo "- **时间**: $(date)" >> $GITHUB_STEP_SUMMARY
           echo "- **状态**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **部署路径**: /www/wwwroot/admin" >> $GITHUB_STEP_SUMMARY
+          echo "- **部署路径**: ${{ secrets.DEPLOY_PATH }}" >> $GITHUB_STEP_SUMMARY
