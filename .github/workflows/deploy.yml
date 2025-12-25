@@ -165,3 +165,44 @@ jobs:
           echo "- **时间**: $(date)" >> $GITHUB_STEP_SUMMARY
           echo "- **状态**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
           echo "- **部署路径**: ${{ secrets.DEPLOY_PATH }}" >> $GITHUB_STEP_SUMMARY
+
+      # 发送邮件通知（构建完成或失败时都发送）
+      - name: 发送邮件通知
+        if: always()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_SERVER }}
+          server_port: ${{ secrets.SMTP_PORT || 465 }}
+          secure: true
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: |
+            ${{ job.status == 'success' && '✅' || '❌' }} 前端项目打包 ${{ job.status == 'success' && '成功' || '失败' }} - ${{ github.repository }}
+          to: ${{ secrets.EMAIL_TO }}
+          from: ${{ secrets.SMTP_FROM || secrets.SMTP_USERNAME }}
+          html_body: |
+            <h2>${{ job.status == 'success' && '✅ 打包成功' || '❌ 打包失败' }}</h2>
+
+            <h3>基本信息</h3>
+            <ul>
+              <li><strong>仓库:</strong> ${{ github.repository }}</li>
+              <li><strong>分支:</strong> ${{ github.ref_name }}</li>
+              <li><strong>提交:</strong> <a href="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}">${{ github.sha }}</a></li>
+              <li><strong>提交信息:</strong> ${{ github.event.head_commit.message || github.event.commits[0].message || 'N/A' }}</li>
+              <li><strong>作者:</strong> ${{ github.actor }}</li>
+              <li><strong>工作流:</strong> <a href="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}">查看详情</a></li>
+            </ul>
+
+            <h3>构建信息</h3>
+            <ul>
+              <li><strong>环境:</strong> ${{ github.event.inputs.environment || 'production' }}</li>
+              <li><strong>Node 版本:</strong> ${{ env.NODE_VERSION }}</li>
+              <li><strong>构建状态:</strong> ${{ job.status == 'success' && '✅ 成功' || '❌ 失败' }}</li>
+            </ul>
+
+            ${{ job.status == 'success' && steps['Deploy to server'].outcome == 'success' && '<h3>部署信息</h3><ul><li><strong>部署状态:</strong> ✅ 已成功部署到服务器</li><li><strong>部署路径:</strong> ${{ secrets.DEPLOY_PATH }}</li></ul>' || '' }}
+
+            ${{ job.status == 'failure' && '<h3>错误信息</h3><p>请查看工作流日志获取详细错误信息：<a href="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}">点击查看</a></p>' || '' }}
+
+            <hr>
+            <p style="color: #999; font-size: 12px;">此邮件由 GitHub Actions 自动发送</p>
