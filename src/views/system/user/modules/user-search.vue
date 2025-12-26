@@ -12,7 +12,7 @@
 
 <script setup lang="ts">
   import { useDictStore } from '@/store/modules/dict'
-  import { DICT_TYPE_CODE } from '@/constants/dict'
+  import { DictTypeCode } from '@/constants/dict'
   import { computed, ref, onMounted } from 'vue'
   import { fetchGetRoleList } from '@/api/role'
   import { ElMessage } from 'element-plus'
@@ -37,7 +37,7 @@
 
   // 性别选项（从字典 store 获取）
   const genderOptions = computed(() => {
-    const dicts = dictStore.getDictByType(DICT_TYPE_CODE.USER_GENDER)
+    const dicts = dictStore.getDictByType(DictTypeCode.USER_GENDER)
     return dicts.map((dict) => ({
       label: dict.dataLabel,
       value: dict.dataValue

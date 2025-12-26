@@ -47,6 +47,7 @@ declare namespace Api {
       nickName?: string | null
       email?: string | null
       avatar?: string | null
+      userGender?: string | null
     }
   }
 }

@@ -1,0 +1,52 @@
+server {
+    listen 80;
+    server_name your-domain.com;  # 替换为你的域名或 IP
+    root /var/www/qm-photo-admin;
+    index index.html;
+
+    # 日志配置
+    access_log /var/log/nginx/qm-photo-admin-access.log;
+    error_log /var/log/nginx/qm-photo-admin-error.log;
+
+    # Gzip 压缩
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types text/plain text/css text/xml text/javascript 
+               application/x-javascript application/xml+rss 
+               application/json application/javascript;
+
+    # 静态资源缓存（1年）
+    location ~* \.(jpg|jpeg|png|gif|ico|css|js|svg|woff|woff2|ttf|eot)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # API 代理到后端服务
+    location /api {
+        proxy_pass http://localhost:3008;  # 后端服务地址
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # 超时设置
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+
+    # Vue Router 历史模式支持
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # 健康检查端点
+    location /health {
+        access_log off;
+        return 200 "healthy\n";
+        add_header Content-Type text/plain;
+    }
+}
+
+

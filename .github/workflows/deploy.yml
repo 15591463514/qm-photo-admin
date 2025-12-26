@@ -1,0 +1,208 @@
+name: Build and Deploy Frontend
+
+on:
+  push:
+    branches:
+      - master
+      - feat/deploy-prod
+    paths:
+      - '**'
+      - '!.github/workflows/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: '部署环境'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '8'
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build project
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_BASE_URL: ${{ secrets.VITE_BASE_URL }}
+          VITE_VERSION: ${{ github.sha }}
+        run: pnpm run build
+
+      - name: Create deployment archive
+        run: |
+          cd dist
+          tar -czf ../deploy.tar.gz .
+          cd ..
+          echo "部署包大小:"
+          ls -lh deploy.tar.gz
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+          echo "✅ SSH 配置完成"
+
+      - name: Deploy to server
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          echo "🚀 开始部署到服务器..."
+
+          # 上传部署包
+          scp -o StrictHostKeyChecking=no deploy.tar.gz ${SSH_USER}@${SSH_HOST}:/tmp/deploy.tar.gz
+
+          # 执行部署脚本
+          ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} << EOF
+            set -e
+            
+            DEPLOY_PATH="${DEPLOY_PATH}"
+            BACKUP_DIR="/tmp/admin-backup-$(date +%Y%m%d-%H%M%S)"
+            
+            echo "📦 备份当前版本..."
+            if [ -d "\$DEPLOY_PATH" ]; then
+              mkdir -p "\$BACKUP_DIR"
+              cp -r "\$DEPLOY_PATH"/* "\$BACKUP_DIR/" 2>/dev/null || true
+              echo "✅ 备份完成: \$BACKUP_DIR"
+            fi
+            
+            echo "📂 创建部署目录..."
+            mkdir -p "\$DEPLOY_PATH"
+            
+            echo "📥 解压部署包..."
+            cd "\$DEPLOY_PATH"
+            tar -xzf /tmp/deploy.tar.gz
+            rm -f /tmp/deploy.tar.gz
+            
+            echo "✅ 文件部署完成"
+            
+            # 设置文件权限（宝塔面板使用 www 用户）
+            sudo chown -R www:www "\$DEPLOY_PATH" || chown -R www:www "\$DEPLOY_PATH" || true
+            sudo chmod -R 755 "\$DEPLOY_PATH" || chmod -R 755 "\$DEPLOY_PATH" || true
+            
+            echo "✅ 权限设置完成"
+          EOF
+
+          echo "✅ 部署完成！"
+
+      - name: Reload Nginx (optional)
+        if: success()
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+        run: |
+          ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} << 'EOF'
+            # 测试 Nginx 配置
+            if command -v nginx &> /dev/null; then
+              if sudo nginx -t 2>/dev/null || nginx -t 2>/dev/null; then
+                echo "🔄 重新加载 Nginx..."
+                sudo nginx -s reload 2>/dev/null || sudo systemctl reload nginx 2>/dev/null || nginx -s reload 2>/dev/null || true
+                echo "✅ Nginx 重新加载完成"
+              else
+                echo "⚠️ Nginx 配置测试失败，跳过重新加载"
+              fi
+            else
+              echo "ℹ️ 未找到 Nginx，跳过重新加载"
+            fi
+          EOF
+        continue-on-error: true
+
+      - name: Cleanup SSH
+        if: always()
+        run: |
+          rm -f ~/.ssh/id_rsa
+          echo "✅ SSH 密钥已清理"
+
+      - name: Deployment summary
+        if: always()
+        run: |
+          echo "## 部署总结" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **分支**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **提交**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **作者**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **时间**: $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "- **状态**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **部署路径**: ${{ secrets.DEPLOY_PATH }}" >> $GITHUB_STEP_SUMMARY
+
+      # 发送邮件通知（构建完成或失败时都发送）
+      - name: 发送邮件通知
+        if: always()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_SERVER }}
+          server_port: ${{ secrets.SMTP_PORT || 465 }}
+          secure: true
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: |
+            ${{ job.status == 'success' && '✅' || '❌' }} 前端项目打包 ${{ job.status == 'success' && '成功' || '失败' }} - ${{ github.repository }}
+          to: ${{ secrets.EMAIL_TO }}
+          from: ${{ secrets.SMTP_FROM || secrets.SMTP_USERNAME }}
+          html_body: |
+            <h2>${{ job.status == 'success' && '✅ 打包成功' || '❌ 打包失败' }}</h2>
+
+            <h3>基本信息</h3>
+            <ul>
+              <li><strong>仓库:</strong> ${{ github.repository }}</li>
+              <li><strong>分支:</strong> ${{ github.ref_name }}</li>
+              <li><strong>提交:</strong> <a href="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}">${{ github.sha }}</a></li>
+              <li><strong>提交信息:</strong> ${{ github.event.head_commit.message || github.event.commits[0].message || 'N/A' }}</li>
+              <li><strong>作者:</strong> ${{ github.actor }}</li>
+              <li><strong>工作流:</strong> <a href="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}">查看详情</a></li>
+            </ul>
+
+            <h3>构建信息</h3>
+            <ul>
+              <li><strong>环境:</strong> ${{ github.event.inputs.environment || 'production' }}</li>
+              <li><strong>Node 版本:</strong> ${{ env.NODE_VERSION }}</li>
+              <li><strong>构建状态:</strong> ${{ job.status == 'success' && '✅ 成功' || '❌ 失败' }}</li>
+            </ul>
+
+            ${{ job.status == 'success' && steps['Deploy to server'].outcome == 'success' && '<h3>部署信息</h3><ul><li><strong>部署状态:</strong> ✅ 已成功部署到服务器</li><li><strong>部署路径:</strong> ${{ secrets.DEPLOY_PATH }}</li></ul>' || '' }}
+
+            ${{ job.status == 'failure' && '<h3>错误信息</h3><p>请查看工作流日志获取详细错误信息：<a href="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}">点击查看</a></p>' || '' }}
+
+            <hr>
+            <p style="color: #999; font-size: 12px;">此邮件由 GitHub Actions 自动发送</p>
