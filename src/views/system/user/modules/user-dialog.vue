@@ -50,7 +50,7 @@
   import type { FormInstance, FormRules } from 'element-plus'
   import { ElMessage } from 'element-plus'
   import { useDictStore } from '@/store/modules/dict'
-  import { DICT_TYPE_CODE } from '@/constants/dict'
+  import { DictTypeCode } from '@/constants/dict'
   import { computed } from 'vue'
 
   interface Props {
@@ -76,7 +76,7 @@
 
   // 性别选项（从字典 store 获取）
   const genderOptions = computed(() => {
-    const dicts = dictStore.getDictByType(DICT_TYPE_CODE.USER_GENDER)
+    const dicts = dictStore.getDictByType(DictTypeCode.USER_GENDER)
     return dicts.map((dict) => ({
       label: dict.dataLabel,
       value: dict.dataValue
@@ -94,7 +94,7 @@
 
   // 获取性别默认值
   const getDefaultGender = () => {
-    const dicts = dictStore.getDictByType(DICT_TYPE_CODE.USER_GENDER)
+    const dicts = dictStore.getDictByType(DictTypeCode.USER_GENDER)
     const defaultDict = dicts.find((dict) => dict.isDefault)
     return defaultDict?.dataValue || 'unknown'
   }

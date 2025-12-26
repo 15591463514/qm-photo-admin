@@ -49,7 +49,6 @@
 
 <script setup lang="ts">
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
-  import { ACCOUNT_TABLE_DATA } from '@/mock/temp/formData'
   import { useTable } from '@/hooks/core/useTable'
   import { fetchGetUserList, fetchDeleteUser } from '@/api/user'
   import UserSearch from './modules/user-search.vue'
@@ -57,8 +56,9 @@
   import { ElTag, ElMessageBox, ElImage, ElMessage } from 'element-plus'
   import { DialogType } from '@/types'
   import { useDictStore } from '@/store/modules/dict'
-  import { DICT_TYPE_CODE } from '@/constants/dict'
+  import { DictTypeCode } from '@/constants/dict'
   import { useAuth } from '@/hooks/core/useAuth'
+  import { getAvatarUrl } from '@/utils/avatar'
 
   defineOptions({ name: 'User' })
 
@@ -144,11 +144,12 @@
           minWidth: 180,
           // visible: false, // 默认是否显示列
           formatter: (row) => {
+            const avatarUrl = getAvatarUrl(row.avatar, row.userGender)
             return h('div', { class: 'user flex-c' }, [
               h(ElImage, {
                 class: 'size-9.5 rounded-md',
-                src: row.avatar,
-                previewSrcList: [row.avatar],
+                src: avatarUrl,
+                previewSrcList: [avatarUrl],
                 // 图片预览是否插入至 body 元素上，用于解决表格内部图片预览样式异常
                 previewTeleported: true
               }),
@@ -171,7 +172,7 @@
           sortable: true,
           formatter: (row) => {
             const genderLabel = dictStore.getDictLabel(
-              DICT_TYPE_CODE.USER_GENDER,
+              DictTypeCode.USER_GENDER,
               row.userGender || ''
             )
             return genderLabel || row.userGender || '未知'
@@ -227,7 +228,7 @@
     },
     // 数据处理
     transform: {
-      // 数据转换器 - 替换头像
+      // 数据转换器 - 处理头像（根据性别和头像字段）
       dataTransformer: (records) => {
         // 类型守卫检查
         if (!Array.isArray(records)) {
@@ -235,11 +236,11 @@
           return []
         }
 
-        // 使用本地头像替换接口返回的头像
-        return records.map((item, index: number) => {
+        // 使用 getAvatarUrl 函数处理头像
+        return records.map((item) => {
           return {
             ...item,
-            avatar: ACCOUNT_TABLE_DATA[index % ACCOUNT_TABLE_DATA.length].avatar
+            avatar: getAvatarUrl(item.avatar, item.userGender)
           }
         })
       }
