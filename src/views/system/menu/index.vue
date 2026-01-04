@@ -33,6 +33,7 @@
       </ArtTableHeader>
 
       <ArtTable
+        table-layout="auto"
         ref="tableRef"
         rowKey="path"
         :loading="loading"
@@ -51,6 +52,7 @@
         :editData="editData"
         :menuRow="menuRow"
         :lockType="lockMenuType"
+        :menuList="tableData"
         @submit="handleSubmit"
       />
     </ElCard>
@@ -60,6 +62,7 @@
 <script setup lang="ts">
   import { formatMenuTitle } from '@/utils/router'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import { useTableColumns } from '@/hooks/core/useTableColumns'
   import type { AppRouteRecord } from '@/types/router'
   import MenuDialog from './modules/menu-dialog.vue'
@@ -200,7 +203,15 @@
       prop: 'meta.title',
       label: '菜单名称',
       minWidth: 120,
-      formatter: (row: AppRouteRecord) => formatMenuTitle(row.meta?.title)
+      formatter: (row: AppRouteRecord) => {
+        const icon = row.meta?.icon || 'qlementine-icons:case-default-16'
+        const title = formatMenuTitle(row.meta?.title)
+
+        return h('span', {}, [
+          h(ArtSvgIcon, { icon, style: { fontSize: '18px', marginRight: '8px' } }),
+          h('span', title)
+        ])
+      }
     },
     {
       prop: 'type',

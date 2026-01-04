@@ -1,0 +1,197 @@
+<template>
+  <ElDialog
+    v-model="dialogVisible"
+    :title="props.type === 'add' ? '新增规则' : '编辑规则'"
+    width="60%"
+    :close-on-click-modal="false"
+  >
+    <ElForm ref="formRef" :model="formData" :rules="formRules" label-width="120px">
+      <ElFormItem label="规则名称" prop="ruleName">
+        <ElInput v-model="formData.ruleName" placeholder="请输入规则名称" />
+      </ElFormItem>
+      <ElFormItem label="消息来源" prop="msgSource">
+        <ElInput v-model="formData.msgSource" placeholder="请输入消息来源" />
+      </ElFormItem>
+      <ElFormItem label="消息类型" prop="msgType">
+        <ElSelect
+          v-model="formData.msgType"
+          filterable
+          clearable
+          placeholder="请选择消息类型"
+          style="width: 100%"
+        >
+          <ElOption
+            v-for="option in msgTypeOptions"
+            :key="option.value"
+            :label="option.label"
+            :value="option.value"
+          />
+        </ElSelect>
+      </ElFormItem>
+      <ElFormItem label="通知方式" prop="noticeMode">
+        <ElSelect v-model="formData.noticeMode" style="width: 100%">
+          <ElOption :label="NoticeModeText[NoticeModeEnum.EMAIL]" :value="NoticeModeEnum.EMAIL" />
+        </ElSelect>
+      </ElFormItem>
+      <ElFormItem label="通知地址" prop="noticeAddress">
+        <ElInput
+          v-model="formData.noticeAddress"
+          type="textarea"
+          :rows="3"
+          placeholder="请输入邮箱地址，多个邮箱用英文分号分隔"
+        />
+      </ElFormItem>
+      <ElFormItem label="处理脚本" prop="handlerScript">
+        <div style="width: 100%">
+          <Codemirror
+            v-model="formData.handlerScript"
+            placeholder="请输入处理脚本（JavaScript代码）"
+            :style="{ height: '400px' }"
+            :autofocus="true"
+            :indent-with-tab="true"
+            :tab-size="4"
+            :extensions="[javascript(), oneDark]"
+          />
+          <div style="margin-top: 8px; font-size: 12px; color: #909399">
+            处理脚本需要返回包含 subject 和 content 的对象
+          </div>
+        </div>
+      </ElFormItem>
+    </ElForm>
+
+    <template #footer>
+      <ElButton @click="dialogVisible = false">取消</ElButton>
+      <ElButton type="primary" @click="handleSubmit">确定</ElButton>
+    </template>
+  </ElDialog>
+</template>
+
+<script setup lang="ts">
+  import { ElDialog, ElForm, ElFormItem, ElInput, ElButton, ElSelect, ElOption } from 'element-plus'
+  import type { FormInstance, FormRules } from 'element-plus'
+  import { NoticeModeEnum, NoticeModeText } from '@/types/notice'
+  import type { NoticeRule } from '@/types/notice'
+  import { DialogType } from '@/types'
+  import { createRule, updateRule } from '@/api/notice'
+  import { ElMessage } from 'element-plus'
+  import { Codemirror } from 'vue-codemirror'
+  import { javascript } from '@codemirror/lang-javascript'
+  import { oneDark } from '@codemirror/theme-one-dark'
+  import { useDictStore } from '@/store/modules/dict'
+  import { computed } from 'vue'
+
+  defineOptions({ name: 'RulesDialog' })
+
+  const props = defineProps<{
+    visible: boolean
+    type: DialogType
+    ruleData?: Partial<NoticeRule>
+  }>()
+
+  const emit = defineEmits<{
+    'update:visible': [value: boolean]
+    submit: []
+  }>()
+
+  const dialogVisible = computed({
+    get: () => props.visible,
+    set: (value) => emit('update:visible', value)
+  })
+
+  const formRef = ref<FormInstance>()
+  const dictStore = useDictStore()
+
+  // 消息类型选项（从字典 store 获取）
+  const msgTypeOptions = computed(() => {
+    const dicts = dictStore.getDictByType('msg_type')
+    return dicts.map((dict) => ({
+      label: dict.dataLabel,
+      value: dict.dataValue
+    }))
+  })
+
+  const formData = ref<Partial<NoticeRule>>({
+    ruleName: '',
+    msgSource: '',
+    msgType: '',
+    noticeMode: NoticeModeEnum.EMAIL,
+    noticeAddress: '',
+    handlerScript: `function formatContent(jsonObject) {
+  return {
+    subject: \`通知 - \${jsonObject.title || '系统通知'}\`,
+    content: \`<h2>\${jsonObject.title || '系统通知'}</h2>
+              <p>\${JSON.stringify(jsonObject, null, 2)}</p>\`
+  };
+}`,
+    noticeStatus: 1
+  })
+
+  const formRules: FormRules = {
+    ruleName: [{ required: true, message: '请输入规则名称', trigger: 'blur' }],
+    msgSource: [{ required: true, message: '请输入消息来源', trigger: 'blur' }],
+    msgType: [{ required: true, message: '请输入消息类型', trigger: 'blur' }],
+    noticeAddress: [{ required: true, message: '请输入通知地址', trigger: 'blur' }],
+    handlerScript: [{ required: true, message: '请输入处理脚本', trigger: 'blur' }]
+  }
+
+  watch(
+    () => props.visible,
+    (visible) => {
+      if (visible) {
+        if (props.type === 'edit' && props.ruleData) {
+          formData.value = { ...props.ruleData }
+        } else {
+          formData.value = {
+            ruleName: '',
+            msgSource: '',
+            msgType: '',
+            noticeMode: NoticeModeEnum.EMAIL,
+            noticeAddress: '',
+            handlerScript: `function formatContent(jsonObject) {
+  return {
+    subject: \`通知 - \${jsonObject.title || '系统通知'}\`,
+    content: \`<h2>\${jsonObject.title || '系统通知'}</h2>
+              <p>\${JSON.stringify(jsonObject, null, 2)}</p>\`
+  };
+}`,
+            noticeStatus: 1
+          }
+        }
+        nextTick(() => {
+          formRef.value?.clearValidate()
+        })
+      }
+    },
+    { immediate: true }
+  )
+
+  const handleSubmit = async () => {
+    if (!formRef.value) return
+
+    try {
+      await formRef.value.validate()
+
+      if (props.type === 'add') {
+        await createRule(formData.value as Api.Notice.CreateRuleParams)
+        ElMessage.success('新增成功')
+      } else {
+        await updateRule(formData.value.ruleId!, formData.value as Api.Notice.UpdateRuleParams)
+        ElMessage.success('编辑成功')
+      }
+
+      emit('submit')
+    } catch (error) {
+      console.error('表单验证失败:', error)
+    }
+  }
+</script>
+
+<style scoped lang="scss">
+  :deep(.cm-editor) {
+    height: auto;
+  }
+
+  :deep(.cm-editor .cm-scroller) {
+    min-height: 240px;
+  }
+</style>

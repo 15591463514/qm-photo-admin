@@ -27,7 +27,7 @@
       </ArtTableHeader>
 
       <!-- 表格 -->
-      <ArtTable :loading="loading" :data="data" :columns="columns"> </ArtTable>
+      <ArtTable table-layout="auto" :loading="loading" :data="data" :columns="columns"> </ArtTable>
     </ElCard>
 
     <!-- 角色编辑弹窗 -->

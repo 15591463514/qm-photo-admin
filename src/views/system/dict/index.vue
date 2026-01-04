@@ -32,6 +32,7 @@
 
       <!-- 树形表格 -->
       <ArtTable
+        table-layout="auto"
         ref="tableRef"
         row-key="id"
         :loading="loading"

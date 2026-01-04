@@ -114,6 +114,7 @@
     type?: 'menu' | 'button'
     lockType?: boolean
     menuRow?: AppRouteRecord | null
+    menuList?: AppRouteRecord[] // 菜单列表，用于计算顶层菜单的最大排序值
   }
 
   interface Emits {
@@ -125,7 +126,8 @@
     visible: false,
     type: 'menu',
     lockType: false,
-    menuRow: null
+    menuRow: null,
+    menuList: () => []
   })
 
   const emit = defineEmits<Emits>()
@@ -337,7 +339,7 @@
       form.title = row.meta?.title || '' // 菜单名称（菜单标题）
       form.component = row.component || ''
       form.icon = row.meta?.icon || ''
-      form.sort = row.meta?.sort || 1
+      form.sort = row.meta?.sortOrder || 1
       form.isMenu = row.meta?.isMenu ?? true
       form.keepAlive = row.meta?.keepAlive ?? false
       form.isHide = row.meta?.isHide ?? false
@@ -443,23 +445,46 @@
       }
     },
     ({ menuRow, menuType, visible, isEdit }) => {
-      if (!menuRow || !visible || isEdit) return
+      if (!visible || isEdit) return
 
-      // 新增菜单时，设置 parentId
-      if (menuType === 'menu' && menuRow.id) {
-        form.parentId = menuRow.id
-      }
-
-      if (menuType === 'button' && menuRow.children?.length) {
-        // 获取 menuRow 的 children 的 sortOrder 的最大值
-        const maxSortOrder = Math.max(...menuRow.children.map((child) => child.meta.sortOrder || 0))
-        form.sortOrder = maxSortOrder + 1
-      }
-
+      // 新增菜单时，设置 parentId 和默认排序值
       if (menuType === 'menu') {
-        // console.info('menu', menuRow)
-        form.path = menuRow.path + '/xxx'
-        form.component = form.path + '/index'
+        if (menuRow?.id) {
+          // 有父菜单：设置为子菜单
+          form.parentId = menuRow.id
+          // 获取同层级菜单的最大 sortOrder（排除按钮权限节点）
+          const menuChildren = menuRow.children?.filter((child) => !child.meta?.isAuthButton) || []
+          const maxSortOrder =
+            menuChildren.length > 0
+              ? Math.max(...menuChildren.map((child) => child.meta?.sortOrder || 0))
+              : 0
+          form.sort = maxSortOrder + 1
+          // 设置默认路径和组件
+          form.path = menuRow.path + '/xxx'
+          form.component = form.path + '/index'
+        } else {
+          // 无父菜单：顶层菜单，从菜单列表中获取最大 sortOrder
+          form.parentId = undefined
+          const topLevelMenus =
+            props.menuList?.filter((menu) => !menu.meta?.parentId && !menu.meta?.isAuthButton) || []
+          const maxSortOrder =
+            topLevelMenus.length > 0
+              ? Math.max(...topLevelMenus.map((menu) => menu.meta?.sortOrder || 0))
+              : 0
+          form.sort = maxSortOrder + 1
+        }
+      }
+
+      // 新增按钮权限时，从 authList 获取最大 sortOrder
+      if (menuType === 'button' && menuRow) {
+        const authList = (menuRow.meta?.authList || []) as Array<{
+          title: string
+          authMark: string
+          sortOrder?: number
+        }>
+        const maxSortOrder =
+          authList.length > 0 ? Math.max(...authList.map((auth) => auth.sortOrder || 0)) : 0
+        form.sortOrder = maxSortOrder + 1
       }
     },
     { deep: true }

@@ -30,6 +30,7 @@
           v-model="formData.typeCode"
           placeholder="请输入字典类型编码"
           :disabled="props.type === 'edit' || isTypeNameFromStore || !!props.presetTypeCode"
+          @blur="updateSortOrder"
         />
       </ElFormItem>
       <ElFormItem label="字典标签" prop="dataLabel">
@@ -126,11 +127,23 @@
     return dictTypeOptions.value.some((type) => type.typeName === formData.value.typeName)
   })
 
-  // 当前字典类型的最大的排序
-  const maxSortOrder = computed(() => {
-    const currentType = dictStore.treeData.find((item) => item.typeCode === props.presetTypeCode)
+  // 根据类型编码获取该类型下的最大排序值
+  const getMaxSortOrderByTypeCode = (typeCode: string): number => {
+    if (!typeCode) return 0
+    const currentType = dictStore.treeData.find((item) => item.typeCode === typeCode)
     return currentType?.children?.reduce((max, item) => Math.max(max, item.sortOrder), 0) || 0
-  })
+  }
+
+  /**
+   * 更新排序值为最大值+1
+   */
+  const updateSortOrder = () => {
+    if (props.type === 'add') {
+      const typeCode = props.presetTypeCode || formData.value.typeCode
+      const maxSort = getMaxSortOrderByTypeCode(typeCode)
+      formData.value.sortOrder = maxSort + 1
+    }
+  }
 
   /**
    * 处理类型名称变化
@@ -143,11 +156,14 @@
     if (selectedType) {
       // 如果选择的是已有的类型，自动填充类型编码
       formData.value.typeCode = selectedType.typeCode
+      // 更新排序值
+      updateSortOrder()
     } else {
       // 如果是新建的类型名称，清空类型编码让用户手动输入
       // 但只在新增模式下清空，编辑模式下不清空
       if (props.type === 'add') {
         formData.value.typeCode = ''
+        formData.value.sortOrder = 1
       }
     }
 
@@ -206,6 +222,10 @@
         formData.value.typeCode = props.presetTypeCode
         formData.value.typeName = props.presetTypeName
       }
+      // 新增时，根据类型编码计算排序默认值
+      nextTick(() => {
+        updateSortOrder()
+      })
     }
     // 重置表单验证状态
     nextTick(() => {
@@ -227,11 +247,15 @@
     }
   }
 
-  watch(maxSortOrder, (newVal) => {
-    if (newVal) {
-      formData.value.sortOrder = newVal + 1
+  // 监听类型编码变化，更新排序值
+  watch(
+    () => formData.value.typeCode,
+    () => {
+      if (props.type === 'add') {
+        updateSortOrder()
+      }
     }
-  })
+  )
 
   watch(
     () => [props.visible, props.presetTypeCode, props.presetTypeName],

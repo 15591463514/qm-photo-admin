@@ -26,6 +26,7 @@
 
       <!-- 表格 -->
       <ArtTable
+        table-layout="auto"
         :loading="loading"
         :data="data"
         :columns="columns"

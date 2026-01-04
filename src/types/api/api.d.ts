@@ -47,6 +47,7 @@
 /// <reference path="./role.d.ts" />
 /// <reference path="./dict.d.ts" />
 /// <reference path="./menu.d.ts" />
+/// <reference path="./notice.d.ts" />
 
 declare namespace Api {
   // 所有类型定义都在各自的模块文件中

@@ -402,8 +402,8 @@ export const ValidationRegex = {
   lowercaseLetters: /^[a-z]+$/,
   /** 字母、数字、短横线、下划线 */
   alphanumericDashUnderscore: /^[a-zA-Z0-9_-]+$/,
-  /** 字母、数字、短横线、下划线、冒号（小写） */
-  alphanumericDashUnderscoreLowercase: /^[a-z0-9_:-]+$/,
+  /** 字母、数字、短横线、下划线、冒号（支持大小写字母） */
+  alphanumericDashUnderscoreLowercase: /^[a-zA-Z0-9_:-]+$/,
   /** 不允许特殊字符和emoji（允许中文、字母、数字、空格、常用标点） */
   noSpecialCharsOrEmoji:
     /^[\u4e00-\u9fa5a-zA-Z0-9\s，。！？、；：""''（）【】《》.,!?;:()[\]<>-]+$/,

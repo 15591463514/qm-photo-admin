@@ -44,3 +44,6 @@ echo "部署路径: $DEPLOY_PATH"
 echo "备份路径: $BACKUP_DIR"
 
 
+
+
+

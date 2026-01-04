@@ -12,6 +12,7 @@
       </ElRadioGroup>
     </div>
     <ArtTable
+      table-layout="auto"
       class="w-full"
       :data="tableData"
       style="width: 100%"
