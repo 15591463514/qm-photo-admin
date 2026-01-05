@@ -42,20 +42,14 @@
         />
       </ElFormItem>
       <ElFormItem label="处理脚本" prop="handlerScript">
-        <div style="width: 100%">
-          <Codemirror
-            v-model="formData.handlerScript"
-            placeholder="请输入处理脚本（JavaScript代码）"
-            :style="{ height: '400px' }"
-            :autofocus="true"
-            :indent-with-tab="true"
-            :tab-size="4"
-            :extensions="[javascript(), oneDark]"
-          />
-          <div style="margin-top: 8px; font-size: 12px; color: #909399">
-            处理脚本需要返回包含 subject 和 content 的对象
-          </div>
-        </div>
+        <ArtCodemirror
+          v-model="formData.handlerScript!"
+          language="javascript"
+          placeholder="请输入处理脚本（JavaScript代码）"
+          height="400px"
+          :tab-size="4"
+          hint="处理脚本需要返回包含 subject 和 content 的对象"
+        />
       </ElFormItem>
     </ElForm>
 
@@ -74,11 +68,10 @@
   import { DialogType } from '@/types'
   import { createRule, updateRule } from '@/api/notice'
   import { ElMessage } from 'element-plus'
-  import { Codemirror } from 'vue-codemirror'
-  import { javascript } from '@codemirror/lang-javascript'
-  import { oneDark } from '@codemirror/theme-one-dark'
+  import ArtCodemirror from '@/components/core/forms/art-codemirror/index.vue'
   import { useDictStore } from '@/store/modules/dict'
   import { computed } from 'vue'
+  import { DEFAULT_HANDLER_SCRIPT } from '../constants'
 
   defineOptions({ name: 'RulesDialog' })
 
@@ -116,13 +109,7 @@
     msgType: '',
     noticeMode: NoticeModeEnum.EMAIL,
     noticeAddress: '',
-    handlerScript: `function formatContent(jsonObject) {
-  return {
-    subject: \`通知 - \${jsonObject.title || '系统通知'}\`,
-    content: \`<h2>\${jsonObject.title || '系统通知'}</h2>
-              <p>\${JSON.stringify(jsonObject, null, 2)}</p>\`
-  };
-}`,
+    handlerScript: DEFAULT_HANDLER_SCRIPT,
     noticeStatus: 1
   })
 
@@ -147,13 +134,7 @@
             msgType: '',
             noticeMode: NoticeModeEnum.EMAIL,
             noticeAddress: '',
-            handlerScript: `function formatContent(jsonObject) {
-  return {
-    subject: \`通知 - \${jsonObject.title || '系统通知'}\`,
-    content: \`<h2>\${jsonObject.title || '系统通知'}</h2>
-              <p>\${JSON.stringify(jsonObject, null, 2)}</p>\`
-  };
-}`,
+            handlerScript: DEFAULT_HANDLER_SCRIPT,
             noticeStatus: 1
           }
         }
@@ -185,13 +166,3 @@
     }
   }
 </script>
-
-<style scoped lang="scss">
-  :deep(.cm-editor) {
-    height: auto;
-  }
-
-  :deep(.cm-editor .cm-scroller) {
-    min-height: 240px;
-  }
-</style>

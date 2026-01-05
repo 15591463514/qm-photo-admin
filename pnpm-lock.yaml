@@ -7,12 +7,36 @@ settings:
 importers:
   .:
     dependencies:
+      '@codemirror/autocomplete':
+        specifier: ^6.20.0
+        version: 6.20.0
+      '@codemirror/commands':
+        specifier: ^6.10.1
+        version: 6.10.1
       '@codemirror/lang-javascript':
         specifier: ^6.2.4
         version: 6.2.4
+      '@codemirror/lang-json':
+        specifier: ^6.0.2
+        version: 6.0.2
+      '@codemirror/lint':
+        specifier: ^6.9.2
+        version: 6.9.2
+      '@codemirror/merge':
+        specifier: ^6.11.2
+        version: 6.11.2
+      '@codemirror/search':
+        specifier: ^6.5.11
+        version: 6.5.11
+      '@codemirror/state':
+        specifier: ^6.5.3
+        version: 6.5.3
       '@codemirror/theme-one-dark':
         specifier: ^6.1.3
         version: 6.1.3
+      '@codemirror/view':
+        specifier: ^6.39.8
+        version: 6.39.8
       '@element-plus/icons-vue':
         specifier: ^2.3.2
         version: 2.3.2(vue@3.5.26(typescript@5.6.3))
@@ -40,6 +64,9 @@ importers:
       codemirror:
         specifier: ^6.0.2
         version: 6.0.2
+      codemirror-formatting:
+        specifier: ^1.0.0
+        version: 1.0.0
       crypto-js:
         specifier: ^4.2.0
         version: 4.2.0
@@ -110,6 +137,9 @@ importers:
       '@eslint/js':
         specifier: ^9.9.1
         version: 9.39.2
+      '@types/codemirror':
+        specifier: ^5.60.17
+        version: 5.60.17
       '@types/node':
         specifier: ^24.0.5
         version: 24.10.4
@@ -493,6 +523,12 @@ packages:
         integrity: sha512-0WVmhp1QOqZ4Rt6GlVGwKJN3KW7Xh4H2q8ZZNGZaP6lRdxXJzmjm4FqvmOojVj6khWJHIb9sp7U/72W7xQgqAA==
       }
 
+  '@codemirror/lang-json@6.0.2':
+    resolution:
+      {
+        integrity: sha512-x2OtO+AvwEHrEwR0FyyPtfDUiloG3rnVTSZV1W8UteaLL8/MajQd8DpvUb2YVzC+/T18aSDv0H9mu+xw0EStoQ==
+      }
+
   '@codemirror/language@6.12.1':
     resolution:
       {
@@ -503,6 +539,12 @@ packages:
     resolution:
       {
         integrity: sha512-sv3DylBiIyi+xKwRCJAAsBZZZWo82shJ/RTMymLabAdtbkV5cSKwWDeCgtUq3v8flTaXS2y1kKkICuRYtUswyQ==
+      }
+
+  '@codemirror/merge@6.11.2':
+    resolution:
+      {
+        integrity: sha512-NO5EJd2rLRbwVWLgMdhIntDIhfDtMOKYEZgqV5WnkNUS2oXOCVWLPjG/kgl/Jth2fGiOuG947bteqxP9nBXmMg==
       }
 
   '@codemirror/search@6.5.11':
@@ -1197,6 +1239,12 @@ packages:
         integrity: sha512-vvYx3MhWqeZtGPwDStM2dwgljd5smolYD2lR2UyFcHfxbBQebqx8yjmFmxtJ/E6nN6u1D9srOiVWm3Rb4tmcUA==
       }
 
+  '@lezer/json@1.0.3':
+    resolution:
+      {
+        integrity: sha512-BP9KzdF9Y35PDpv04r0VeSTKDeox5vVr3efE7eBbx3r4s3oNLfunchejZhjArmeieBH+nVOpgIiBJpEAv8ilqQ==
+      }
+
   '@lezer/lr@1.4.5':
     resolution:
       {
@@ -1742,6 +1790,12 @@ packages:
         integrity: sha512-VeJbUb0wEKbcwaSlj5n+LscBl9IPgLPkHVGBkh00cztv6X4L/TJXK58LzFuBKX7/GAfiGhIwH67YTLTlzvIzBA==
       }
 
+  '@types/codemirror@5.60.17':
+    resolution:
+      {
+        integrity: sha512-AZq2FIsUHVMlp7VSe2hTfl5w4pcUkoFkM3zVsRKsn1ca8CXRDYvnin04+HP2REkwsxemuHqvDofdlhUWNpbwfw==
+      }
+
   '@types/conventional-commits-parser@5.0.2':
     resolution:
       {
@@ -1788,6 +1842,12 @@ packages:
     resolution:
       {
         integrity: sha512-7HP+rZGE2p886PKV9c9OJzLBI6BBJu1O7lJGYnPyG3fS4/duUCcngkNCjsLwIMV+WMqANe3tt4irrXHSIe68OQ==
+      }
+
+  '@types/tern@0.23.9':
+    resolution:
+      {
+        integrity: sha512-ypzHFE/wBzh+BlH6rrBgS5I/Z7RD21pGhZ2rltb/+ZrVM1awdZwjx7hE5XfuYgHWk9uvV5HLZN3SloevCAp3Bw==
       }
 
   '@types/web-bluetooth@0.0.20':
@@ -2615,6 +2675,12 @@ packages:
         integrity: sha512-JQHZ2QMW6l3aH/j6xCqQThY/9OH4D/9ls34cgkUBiEeocRTU04tHfKPBsUK1PqZCUQM7GiA0IIXJSuXHI64Kbg==
       }
     engines: { node: '>=0.8' }
+
+  codemirror-formatting@1.0.0:
+    resolution:
+      {
+        integrity: sha512-br9yM6eJI3pJHekEnoyHaBEb1B7XxxDjju+vRyBe8QGLp5saTIXXkZ+eFCTqXSAtI8QEZDFVEX2/SOjH2sVWRQ==
+      }
 
   codemirror@6.0.2:
     resolution:
@@ -6755,6 +6821,11 @@ snapshots:
       '@lezer/common': 1.5.0
       '@lezer/javascript': 1.5.4
 
+  '@codemirror/lang-json@6.0.2':
+    dependencies:
+      '@codemirror/language': 6.12.1
+      '@lezer/json': 1.0.3
+
   '@codemirror/language@6.12.1':
     dependencies:
       '@codemirror/state': 6.5.3
@@ -6769,6 +6840,14 @@ snapshots:
       '@codemirror/state': 6.5.3
       '@codemirror/view': 6.39.8
       crelt: 1.0.6
+
+  '@codemirror/merge@6.11.2':
+    dependencies:
+      '@codemirror/language': 6.12.1
+      '@codemirror/state': 6.5.3
+      '@codemirror/view': 6.39.8
+      '@lezer/highlight': 1.2.3
+      style-mod: 4.1.3
 
   '@codemirror/search@6.5.11':
     dependencies:
@@ -7180,6 +7259,12 @@ snapshots:
       '@lezer/highlight': 1.2.3
       '@lezer/lr': 1.4.5
 
+  '@lezer/json@1.0.3':
+    dependencies:
+      '@lezer/common': 1.5.0
+      '@lezer/highlight': 1.2.3
+      '@lezer/lr': 1.4.5
+
   '@lezer/lr@1.4.5':
     dependencies:
       '@lezer/common': 1.5.0
@@ -7415,6 +7500,10 @@ snapshots:
 
   '@transloadit/prettier-bytes@0.0.7': {}
 
+  '@types/codemirror@5.60.17':
+    dependencies:
+      '@types/tern': 0.23.9
+
   '@types/conventional-commits-parser@5.0.2':
     dependencies:
       '@types/node': 24.10.4
@@ -7436,6 +7525,10 @@ snapshots:
       undici-types: 7.16.0
 
   '@types/sortablejs@1.15.9': {}
+
+  '@types/tern@0.23.9':
+    dependencies:
+      '@types/estree': 1.0.8
 
   '@types/web-bluetooth@0.0.20': {}
 
@@ -8061,6 +8154,8 @@ snapshots:
       wrap-ansi: 7.0.0
 
   clone@1.0.4: {}
+
+  codemirror-formatting@1.0.0: {}
 
   codemirror@6.0.2:
     dependencies:

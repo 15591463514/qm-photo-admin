@@ -37,20 +37,14 @@
         />
       </ElFormItem>
       <ElFormItem label="测试数据" prop="eventData">
-        <div style="width: 100%">
-          <Codemirror
-            v-model="formData.eventData"
-            placeholder="请输入测试数据（JSON格式）"
-            :style="{ height: '300px' }"
-            :autofocus="true"
-            :indent-with-tab="true"
-            :tab-size="2"
-            :extensions="[javascript(), oneDark]"
-          />
-          <div style="margin-top: 8px; font-size: 12px; color: #909399">
-            请输入JSON格式的测试数据，例如：{"title": "测试通知", "content": "这是一条测试消息"}
-          </div>
-        </div>
+        <ArtCodemirror
+          v-model="formData.eventData"
+          language="json"
+          placeholder="请输入测试数据（JSON格式）"
+          height="300px"
+          :tab-size="2"
+          hint='请输入JSON格式的测试数据，例如：{"title": "测试通知", "content": "这是一条测试消息"}'
+        />
       </ElFormItem>
     </ElForm>
 
@@ -76,9 +70,7 @@
   import { NoticeModeEnum, NoticeModeText } from '@/types/notice'
   import type { NoticeRule } from '@/types/notice'
   import { testRule } from '@/api/notice'
-  import { Codemirror } from 'vue-codemirror'
-  import { javascript } from '@codemirror/lang-javascript'
-  import { oneDark } from '@codemirror/theme-one-dark'
+  import ArtCodemirror from '@/components/core/forms/art-codemirror/index.vue'
   import { useDictStore } from '@/store/modules/dict'
   import { computed, watch, nextTick } from 'vue'
   import { getNoticeResultTagType, type TagType } from '@/utils/notice/notice-result-strategy'
@@ -252,13 +244,3 @@
     }
   }
 </script>
-
-<style scoped lang="scss">
-  :deep(.cm-editor) {
-    height: auto;
-  }
-
-  :deep(.cm-editor .cm-scroller) {
-    min-height: 200px;
-  }
-</style>
