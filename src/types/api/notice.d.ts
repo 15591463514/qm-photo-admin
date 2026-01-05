@@ -13,9 +13,11 @@ declare namespace Api {
       msgSource: string
       msgType: string
       noticeMode: number
-      noticeAddress: string
+      noticeAddress?: string
       noticeAddressName?: string
       handlerScript?: string
+      eventDataExample?: string
+      enableRecord?: boolean
       createUsername?: string
       updateUsername?: string
       noticeStatus: number
@@ -31,9 +33,11 @@ declare namespace Api {
       msgSource: string
       msgType: string
       noticeMode: number
-      noticeAddress: string
+      noticeAddress?: string
       noticeAddressName?: string
       handlerScript?: string
+      eventDataExample?: string
+      enableRecord?: boolean
       noticeStatus?: number
     }
 

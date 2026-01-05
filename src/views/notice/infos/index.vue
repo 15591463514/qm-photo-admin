@@ -16,6 +16,21 @@
         :loading="loading"
         @refresh="refreshData"
       >
+        <template #left>
+          <ElButton
+            v-if="selectedRows.length > 0"
+            type="danger"
+            plain
+            v-ripple
+            :disabled="loading"
+            @click="handleBatchDelete"
+          >
+            <template #icon>
+              <ArtSvgIcon icon="ri:delete-bin-line" />
+            </template>
+            批量删除 ({{ selectedRows.length }})
+          </ElButton>
+        </template>
       </ArtTableHeader>
 
       <!-- 表格 -->
@@ -25,6 +40,7 @@
         :data="data"
         :columns="columns"
         :pagination="pagination"
+        @selection-change="handleSelectionChange"
         @pagination:size-change="handleSizeChange"
         @pagination:current-change="handleCurrentChange"
       >
@@ -37,9 +53,10 @@
 </template>
 
 <script setup lang="ts">
-  import { ElTag, ElMessageBox, ElMessage } from 'element-plus'
+  import { ElTag, ElMessageBox, ElMessage, ElButton } from 'element-plus'
   import { h } from 'vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import { useTable } from '@/hooks/core/useTable'
   import InfosSearch from './modules/infos-search.vue'
   import ResultsDialog from './modules/results-dialog.vue'
@@ -55,6 +72,7 @@
   const currentInfoId = ref<number>()
   const { hasAuth } = useAuth()
   const dictStore = useDictStore()
+  const selectedRows = ref<Api.Notice.Info[]>([])
 
   // 搜索表单
   const searchForm = ref({
@@ -101,6 +119,7 @@
       immediate: true,
       excludeParams: ['noticeTime'],
       columnsFactory: () => [
+        { type: 'selection' },
         { type: 'index', width: 60, label: '序号' },
         {
           prop: 'msgSource',
@@ -225,13 +244,55 @@
         type: 'warning'
       })
 
-      await deleteInfoApi(row.infoId)
+      await deleteInfoApi(row.infoId!)
       ElMessage.success('删除成功')
       refreshData()
     } catch (error: any) {
       if (error !== 'cancel') {
         console.error('删除失败:', error)
         ElMessage.error(error?.message || '删除失败')
+      }
+    }
+  }
+
+  /**
+   * 处理表格行选择变化
+   */
+  const handleSelectionChange = (selection: Api.Notice.Info[]): void => {
+    selectedRows.value = selection
+  }
+
+  /**
+   * 批量删除通知记录
+   */
+  const handleBatchDelete = async (): Promise<void> => {
+    if (selectedRows.value.length === 0) {
+      ElMessage.warning('请选择要删除的记录')
+      return
+    }
+
+    try {
+      await ElMessageBox.confirm(
+        `确定要删除选中的 ${selectedRows.value.length} 条通知记录吗？`,
+        '批量删除通知',
+        {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }
+      )
+
+      // 批量删除：循环调用单个删除接口
+      const deletePromises = selectedRows.value.map((row) => deleteInfoApi(row.infoId!))
+      await Promise.all(deletePromises)
+
+      ElMessage.success(`成功删除 ${selectedRows.value.length} 条记录`)
+      selectedRows.value = []
+      refreshData()
+    } catch (error: any) {
+      if (error !== 'cancel') {
+        console.error('批量删除失败:', error)
+        ElMessage.error(error?.message || '批量删除失败')
       }
     }
   }

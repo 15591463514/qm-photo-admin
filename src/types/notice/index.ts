@@ -36,9 +36,11 @@ export interface NoticeRule {
   msgSource: string
   msgType: string
   noticeMode: NoticeModeEnum
-  noticeAddress: string
+  noticeAddress?: string
   noticeAddressName?: string
   handlerScript?: string
+  eventDataExample?: string
+  enableRecord?: boolean
   createUsername?: string
   updateUsername?: string
   noticeStatus: NoticeStatusEnum

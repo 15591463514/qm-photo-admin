@@ -167,6 +167,11 @@
           minWidth: 180
         },
         {
+          prop: 'email',
+          label: '邮箱',
+          minWidth: 200
+        },
+        {
           prop: 'userGender',
           label: '性别',
           minWidth: 80,

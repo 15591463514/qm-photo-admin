@@ -38,8 +38,22 @@
           v-model="formData.noticeAddress"
           type="textarea"
           :rows="3"
-          placeholder="请输入邮箱地址，多个邮箱用英文分号分隔"
+          placeholder="请输入邮箱地址，多个邮箱用英文分号分隔（可选，创建模板时可留空，调用时手动传递地址）"
         />
+      </ElFormItem>
+      <ElFormItem prop="enableRecord">
+        <template #label>
+          <span class="flex items-center gap-1">
+            <ElTooltip
+              content="开启后，系统会记录通知信息；关闭后，仅发送邮件但不记录数据"
+              placement="top"
+            >
+              <ArtSvgIcon icon="ri:question-line" />
+            </ElTooltip>
+            开启记录
+          </span>
+        </template>
+        <ElSwitch v-model="formData.enableRecord" />
       </ElFormItem>
       <ElFormItem label="处理脚本" prop="handlerScript">
         <ArtCodemirror
@@ -49,6 +63,16 @@
           height="400px"
           :tab-size="4"
           hint="处理脚本需要返回包含 subject 和 content 的对象"
+        />
+      </ElFormItem>
+      <ElFormItem label="入参示例" prop="eventDataExample">
+        <ArtCodemirror
+          v-model="formData.eventDataExample!"
+          language="json"
+          placeholder="请输入入参示例（JSON格式），测试时会自动填充到测试数据"
+          height="200px"
+          :tab-size="2"
+          hint='输入JSON格式的示例数据，例如：{"data": {"title": "系统通知", "content": "这是一条系统通知"}}'
         />
       </ElFormItem>
     </ElForm>
@@ -61,7 +85,18 @@
 </template>
 
 <script setup lang="ts">
-  import { ElDialog, ElForm, ElFormItem, ElInput, ElButton, ElSelect, ElOption } from 'element-plus'
+  import {
+    ElDialog,
+    ElForm,
+    ElFormItem,
+    ElInput,
+    ElButton,
+    ElSelect,
+    ElOption,
+    ElSwitch,
+    ElTooltip
+  } from 'element-plus'
+  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import type { FormInstance, FormRules } from 'element-plus'
   import { NoticeModeEnum, NoticeModeText } from '@/types/notice'
   import type { NoticeRule } from '@/types/notice'
@@ -71,7 +106,7 @@
   import ArtCodemirror from '@/components/core/forms/art-codemirror/index.vue'
   import { useDictStore } from '@/store/modules/dict'
   import { computed } from 'vue'
-  import { DEFAULT_HANDLER_SCRIPT } from '../constants'
+  import { DEFAULT_HANDLER_SCRIPT, DEFAULT_EVENT_DATA_EXAMPLE } from '../constants'
 
   defineOptions({ name: 'RulesDialog' })
 
@@ -110,6 +145,8 @@
     noticeMode: NoticeModeEnum.EMAIL,
     noticeAddress: '',
     handlerScript: DEFAULT_HANDLER_SCRIPT,
+    eventDataExample: DEFAULT_EVENT_DATA_EXAMPLE,
+    enableRecord: true,
     noticeStatus: 1
   })
 
@@ -117,7 +154,6 @@
     ruleName: [{ required: true, message: '请输入规则名称', trigger: 'blur' }],
     msgSource: [{ required: true, message: '请输入消息来源', trigger: 'blur' }],
     msgType: [{ required: true, message: '请输入消息类型', trigger: 'blur' }],
-    noticeAddress: [{ required: true, message: '请输入通知地址', trigger: 'blur' }],
     handlerScript: [{ required: true, message: '请输入处理脚本', trigger: 'blur' }]
   }
 
@@ -135,6 +171,8 @@
             noticeMode: NoticeModeEnum.EMAIL,
             noticeAddress: '',
             handlerScript: DEFAULT_HANDLER_SCRIPT,
+            eventDataExample: DEFAULT_EVENT_DATA_EXAMPLE,
+            enableRecord: true,
             noticeStatus: 1
           }
         }

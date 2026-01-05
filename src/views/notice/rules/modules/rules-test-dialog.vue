@@ -141,6 +141,19 @@
     () => props.visible,
     (visible) => {
       if (visible && props.ruleData) {
+        // 如果有入参示例，使用入参示例；否则使用默认测试数据
+        let defaultEventData = '{\n  "title": "测试通知",\n  "content": "这是一条测试消息"\n}'
+        if (props.ruleData.eventDataExample && props.ruleData.eventDataExample.trim()) {
+          try {
+            // 验证 JSON 格式，如果有效则使用
+            JSON.parse(props.ruleData.eventDataExample)
+            defaultEventData = props.ruleData.eventDataExample
+          } catch {
+            // 如果格式无效，使用默认值
+            console.warn('入参示例格式无效，使用默认测试数据')
+          }
+        }
+
         // 默认填写当前规则的信息
         formData.value = {
           ruleName: props.ruleData.ruleName || '',
@@ -148,7 +161,7 @@
           msgType: props.ruleData.msgType || '',
           noticeMode: props.ruleData.noticeMode || NoticeModeEnum.EMAIL,
           noticeAddress: props.ruleData.noticeAddress || '',
-          eventData: '{\n  "title": "测试通知",\n  "content": "这是一条测试消息"\n}'
+          eventData: defaultEventData
         }
         nextTick(() => {
           formRef.value?.clearValidate()
