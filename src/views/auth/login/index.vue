@@ -31,11 +31,11 @@
                 </ElOption>
               </ElSelect>
             </ElFormItem> -->
-            <ElFormItem prop="username">
+            <ElFormItem prop="account">
               <ElInput
                 class="custom-height"
-                :placeholder="$t('login.placeholder.username')"
-                v-model.trim="formData.username"
+                placeholder="请输入账号或邮箱"
+                v-model.trim="formData.account"
               />
             </ElFormItem>
             <ElFormItem prop="password">
@@ -49,30 +49,25 @@
               />
             </ElFormItem>
 
-            <!-- 推拽验证 -->
-            <div class="relative pb-5 mt-6">
-              <div
-                class="relative z-[2] overflow-hidden select-none rounded-lg border border-transparent tad-300"
-                :class="{ '!border-[#FF4E4F]': !isPassing && isClickPass }"
-              >
-                <ArtDragVerify
-                  ref="dragVerify"
-                  v-model:value="isPassing"
-                  :text="$t('login.sliderText')"
-                  textColor="var(--art-gray-700)"
-                  :successText="$t('login.sliderSuccessText')"
-                  :progressBarBg="getCssVar('--el-color-primary')"
-                  :background="isDark ? '#26272F' : '#F1F1F4'"
-                  handlerBg="var(--default-box-color)"
+            <ElFormItem prop="captchaText">
+              <div class="flex gap-2">
+                <ElInput
+                  class="custom-height flex-1"
+                  placeholder="请输入验证码"
+                  v-model.trim="formData.captchaText"
+                  type="text"
+                  autocomplete="off"
+                  maxlength="4"
+                  @keyup.enter="handleSubmit"
                 />
+                <div
+                  class="custom-height border border-gray-300 rounded cursor-pointer overflow-hidden flex items-center justify-center bg-gray-50 hover:bg-gray-100 transition-colors"
+                  @click="refreshCaptcha"
+                  v-html="captchaSvg"
+                  style="width: 120px; min-width: 120px"
+                ></div>
               </div>
-              <p
-                class="absolute top-0 z-[1] px-px mt-2 text-xs text-[#f56c6c] tad-300"
-                :class="{ 'translate-y-10': !isPassing && isClickPass }"
-              >
-                {{ $t('login.placeholder.slider') }}
-              </p>
-            </div>
+            </ElFormItem>
 
             <div class="flex-cb mt-2 text-sm">
               <ElCheckbox v-model="formData.rememberPassword">{{
@@ -110,17 +105,13 @@
 
 <script setup lang="ts">
   import { useUserStore } from '@/store/modules/user'
-  import { getCssVar } from '@/utils/ui'
   import { useI18n } from 'vue-i18n'
   import { HttpError } from '@/utils/http/error'
-  import { fetchLogin, fetchGetUserInfo } from '@/api/auth'
+  import { fetchLogin, fetchGetUserInfo, fetchCaptcha } from '@/api/auth'
   import { ElNotification, type FormInstance, type FormRules } from 'element-plus'
-  import { useSettingStore } from '@/store/modules/setting'
 
   defineOptions({ name: 'Login' })
 
-  const settingStore = useSettingStore()
-  const { isDark } = storeToRefs(settingStore)
   const { t, locale } = useI18n()
   const formKey = ref(0)
 
@@ -164,29 +155,28 @@
   //   }
   // ])
 
-  const dragVerify = ref()
-
   const userStore = useUserStore()
   const router = useRouter()
   const route = useRoute()
-  const isPassing = ref(false)
-  const isClickPass = ref(false)
 
   const formRef = ref<FormInstance>()
 
   const formData = reactive({
-    // account: '', // 角色选择功能已注释
-    username: '',
+    account: '',
     password: '',
+    captchaId: '',
+    captchaText: '',
     rememberPassword: true
   })
 
-  const USERNAME_MIN_LENGTH = 3
-  const USERNAME_MAX_LENGTH = 20
+  const captchaSvg = ref('')
+  const loadingCaptcha = ref(false)
+
+  const ACCOUNT_MIN_LENGTH = 3
 
   const rules = computed<FormRules>(() => ({
-    username: [
-      { required: true, message: '请输入账号', trigger: 'blur' },
+    account: [
+      { required: true, message: '请输入账号或邮箱', trigger: 'blur' },
       {
         validator: (_rule: any, value: string, callback: (error?: Error) => void) => {
           if (!value) {
@@ -196,20 +186,19 @@
 
           const trimmedValue = value.trim()
 
-          // 检查长度（3-20个字符）
-          if (
-            trimmedValue.length < USERNAME_MIN_LENGTH ||
-            trimmedValue.length > USERNAME_MAX_LENGTH
-          ) {
-            callback(new Error(`账号长度为${USERNAME_MIN_LENGTH}-${USERNAME_MAX_LENGTH}个字符`))
+          // 检查长度（至少3个字符）
+          if (trimmedValue.length < ACCOUNT_MIN_LENGTH) {
+            callback(new Error(`账号或邮箱长度不能少于${ACCOUNT_MIN_LENGTH}位`))
             return
           }
 
-          // 检查格式：字母开头，支持字母、数字、下划线
-          const accountRegex = /^[a-zA-Z][a-zA-Z0-9_]{2,19}$/
-          if (!accountRegex.test(trimmedValue)) {
-            callback(new Error('账号必须以字母开头，只能包含字母、数字和下划线'))
-            return
+          // 如果是邮箱格式，验证邮箱格式
+          if (trimmedValue.includes('@')) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+            if (!emailRegex.test(trimmedValue)) {
+              callback(new Error('邮箱格式不正确'))
+              return
+            }
           }
 
           callback()
@@ -217,15 +206,56 @@
         trigger: 'blur'
       }
     ],
-    password: [{ required: true, message: t('login.placeholder.password'), trigger: 'blur' }]
+    password: [{ required: true, message: t('login.placeholder.password'), trigger: 'blur' }],
+    captchaText: [
+      { required: true, message: '请输入验证码', trigger: 'blur' },
+      {
+        validator: (_rule: any, value: string, callback: (error?: Error) => void) => {
+          if (!value) {
+            callback(new Error('请输入验证码'))
+            return
+          }
+
+          if (value.length !== 4) {
+            callback(new Error('验证码长度为4位'))
+            return
+          }
+
+          if (!/^\d{4}$/.test(value)) {
+            callback(new Error('验证码必须是4位数字'))
+            return
+          }
+
+          callback()
+        },
+        trigger: 'blur'
+      }
+    ]
   }))
 
   const loading = ref(false)
 
-  // 角色选择功能已注释，不再自动设置账号
-  // onMounted(() => {
-  //   setupAccount('super')
-  // })
+  /**
+   * 获取验证码
+   */
+  const refreshCaptcha = async () => {
+    try {
+      loadingCaptcha.value = true
+      const res = await fetchCaptcha()
+      formData.captchaId = res.captchaId
+      captchaSvg.value = res.svg
+    } catch (error) {
+      console.error('获取验证码失败:', error)
+      ElMessage.error('获取验证码失败，请刷新页面重试')
+    } finally {
+      loadingCaptcha.value = false
+    }
+  }
+
+  // 页面加载时获取验证码
+  onMounted(() => {
+    refreshCaptcha()
+  })
 
   // 设置账号（角色选择功能已注释）
   // const setupAccount = (key: AccountKey) => {
@@ -244,20 +274,16 @@
       const valid = await formRef.value.validate()
       if (!valid) return
 
-      // 拖拽验证
-      if (!isPassing.value) {
-        isClickPass.value = true
-        return
-      }
-
       loading.value = true
 
       // 登录请求
-      const { username, password } = formData
+      const { account, password, captchaId, captchaText } = formData
 
       const { token, refreshToken } = await fetchLogin({
-        userName: username,
-        password
+        account,
+        password,
+        captchaId,
+        captchaText
       })
 
       // 验证token
@@ -289,7 +315,11 @@
     } catch (error) {
       // 处理 HttpError
       if (error instanceof HttpError) {
-        // console.log(error.code)
+        // 如果验证码错误，刷新验证码
+        if (error.message?.includes('验证码')) {
+          refreshCaptcha()
+          formData.captchaText = ''
+        }
       } else {
         // 处理非 HttpError
         // ElMessage.error('登录失败，请稍后重试')
@@ -297,13 +327,7 @@
       }
     } finally {
       loading.value = false
-      resetDragVerify()
     }
-  }
-
-  // 重置拖拽验证
-  const resetDragVerify = () => {
-    dragVerify.value.reset()
   }
 
   // 登录成功提示

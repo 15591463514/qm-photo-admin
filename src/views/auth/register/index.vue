@@ -44,9 +44,40 @@
                 :placeholder="$t('register.placeholder.confirmPassword')"
                 type="password"
                 autocomplete="off"
-                @keyup.enter="register"
                 show-password
               />
+            </ElFormItem>
+
+            <ElFormItem prop="email">
+              <ElInput
+                class="custom-height"
+                v-model.trim="formData.email"
+                placeholder="请输入邮箱地址"
+                type="email"
+                autocomplete="off"
+              />
+            </ElFormItem>
+
+            <ElFormItem prop="verificationCode">
+              <div class="flex gap-2">
+                <ElInput
+                  class="custom-height flex-1"
+                  v-model.trim="formData.verificationCode"
+                  placeholder="请输入验证码"
+                  type="text"
+                  autocomplete="off"
+                  maxlength="4"
+                  @keyup.enter="register"
+                />
+                <ElButton
+                  class="custom-height"
+                  :disabled="countdown > 0 || !formData.email"
+                  @click="sendVerificationCode"
+                  :loading="sendingCode"
+                >
+                  {{ countdown > 0 ? `${countdown}秒` : '发送验证码' }}
+                </ElButton>
+              </div>
             </ElFormItem>
 
             <ElFormItem prop="agreement">
@@ -88,29 +119,37 @@
 <script setup lang="ts">
   import { useI18n } from 'vue-i18n'
   import type { FormInstance, FormRules } from 'element-plus'
-  import { fetchRegister } from '@/api/auth'
+  import { fetchRegister, fetchSendVerificationCode, fetchGetUserInfo } from '@/api/auth'
   import { HttpError } from '@/utils/http/error'
+  import { useUserStore } from '@/store/modules/user'
 
   defineOptions({ name: 'Register' })
+
+  const userStore = useUserStore()
 
   interface RegisterForm {
     username: string
     password: string
     confirmPassword: string
+    email: string
+    verificationCode: string
     agreement: boolean
   }
 
   const USERNAME_MIN_LENGTH = 3
   const USERNAME_MAX_LENGTH = 20
   const PASSWORD_MIN_LENGTH = 8
-  const REDIRECT_DELAY = 1000
+  const COUNTDOWN_TIME = 60 // 倒计时时间（秒）
 
   const { t, locale } = useI18n()
   const router = useRouter()
   const formRef = ref<FormInstance>()
 
   const loading = ref(false)
+  const sendingCode = ref(false)
+  const countdown = ref(0)
   const formKey = ref(0)
+  let countdownTimer: ReturnType<typeof setInterval> | null = null
 
   // 监听语言切换，重置表单
   watch(locale, () => {
@@ -121,7 +160,17 @@
     username: '',
     password: '',
     confirmPassword: '',
+    email: '',
+    verificationCode: '',
     agreement: false
+  })
+
+  // 组件卸载时清理定时器
+  onUnmounted(() => {
+    if (countdownTimer) {
+      clearInterval(countdownTimer)
+      countdownTimer = null
+    }
   })
 
   /**
@@ -173,7 +222,7 @@
     const hasNumber = /\d/.test(value)
 
     if (!hasLetter || !hasNumber) {
-      callback(new Error(t('register.rule.passwordFormat') || '密码必须包含字母和数字'))
+      callback(new Error('密码必须包含字母和数字'))
       return
     }
 
@@ -208,6 +257,50 @@
   }
 
   /**
+   * 验证邮箱格式
+   */
+  const validateEmail = (_rule: any, value: string, callback: (error?: Error) => void) => {
+    if (!value) {
+      callback(new Error('请输入邮箱地址'))
+      return
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(value)) {
+      callback(new Error('邮箱地址格式不正确'))
+      return
+    }
+
+    callback()
+  }
+
+  /**
+   * 验证验证码
+   */
+  const validateVerificationCode = (
+    _rule: any,
+    value: string,
+    callback: (error?: Error) => void
+  ) => {
+    if (!value) {
+      callback(new Error('请输入验证码'))
+      return
+    }
+
+    if (value.length !== 4) {
+      callback(new Error('验证码长度为4位'))
+      return
+    }
+
+    if (!/^\d{4}$/.test(value)) {
+      callback(new Error('验证码必须是4位数字'))
+      return
+    }
+
+    callback()
+  }
+
+  /**
    * 验证用户协议
    * 确保用户已勾选同意协议
    */
@@ -223,8 +316,63 @@
     username: [{ required: true, validator: validateUsername, trigger: 'blur' }],
     password: [{ required: true, validator: validatePassword, trigger: 'blur' }],
     confirmPassword: [{ required: true, validator: validateConfirmPassword, trigger: 'blur' }],
+    email: [{ required: true, validator: validateEmail, trigger: 'blur' }],
+    verificationCode: [{ required: true, validator: validateVerificationCode, trigger: 'blur' }],
     agreement: [{ validator: validateAgreement, trigger: 'change' }]
   }))
+
+  /**
+   * 发送验证码
+   */
+  const sendVerificationCode = async () => {
+    if (!formData.email) {
+      ElMessage.warning('请先输入邮箱地址')
+      return
+    }
+
+    // 验证邮箱格式
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(formData.email)) {
+      ElMessage.warning('邮箱地址格式不正确')
+      return
+    }
+
+    try {
+      sendingCode.value = true
+
+      await fetchSendVerificationCode({ email: formData.email })
+
+      ElMessage.success('验证码已发送到您的邮箱')
+      startCountdown()
+    } catch (error) {
+      // HttpError 的错误消息已经由 http 拦截器处理并显示
+      console.error('[SendVerificationCode] Error:', error)
+    } finally {
+      sendingCode.value = false
+    }
+  }
+
+  /**
+   * 开始倒计时
+   */
+  const startCountdown = () => {
+    countdown.value = COUNTDOWN_TIME
+
+    if (countdownTimer) {
+      clearInterval(countdownTimer)
+    }
+
+    countdownTimer = setInterval(() => {
+      countdown.value--
+
+      if (countdown.value <= 0) {
+        if (countdownTimer) {
+          clearInterval(countdownTimer)
+          countdownTimer = null
+        }
+      }
+    }, 1000)
+  }
 
   /**
    * 注册用户
@@ -243,16 +391,40 @@
       // 注册请求
       const params: Api.Auth.RegisterParams = {
         username: formData.username,
-        password: formData.password
+        password: formData.password,
+        email: formData.email,
+        verificationCode: formData.verificationCode
       }
 
       // HTTP 拦截器已经处理了错误情况，这里如果执行到这里说明注册成功
       // 拦截器返回的是 data 字段的内容，不是完整的响应对象
       const res = await fetchRegister(params)
 
-      // 注册成功，显示成功消息并跳转
-      ElMessage.success(res.message || t('register.success') || '注册成功')
-      toLogin()
+      // 验证token
+      if (!res.token) {
+        throw new Error('注册失败 - 未收到 token')
+      }
+
+      // 存储 token 和登录状态（注册成功后自动登录）
+      userStore.setToken(res.token, res.refreshToken)
+      userStore.setLoginStatus(true)
+
+      // 获取用户信息（包含权限）
+      try {
+        const userInfo = await fetchGetUserInfo()
+        userStore.setUserInfo(userInfo)
+        // 检查并清理工作台标签页（如果是不同用户登录）
+        userStore.checkAndClearWorktabs()
+      } catch (error) {
+        console.error('获取用户信息失败:', error)
+        // 即使获取用户信息失败，也允许登录，路由守卫会重新获取
+      }
+
+      // 注册成功，显示成功消息并跳转到首页
+      ElMessage.success(res.message || t('register.success') || '注册成功，已自动登录')
+
+      // 跳转到首页
+      router.push('/')
     } catch (error) {
       // 处理 HttpError
       if (error instanceof HttpError) {
@@ -272,15 +444,6 @@
     } finally {
       loading.value = false
     }
-  }
-
-  /**
-   * 跳转到登录页面
-   */
-  const toLogin = () => {
-    setTimeout(() => {
-      router.push({ name: 'Login' })
-    }, REDIRECT_DELAY)
   }
 </script>
 

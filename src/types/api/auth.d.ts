@@ -10,8 +10,16 @@ declare namespace Api {
   namespace Auth {
     /** 登录参数 */
     interface LoginParams {
-      userName: string
+      account: string
       password: string
+      captchaId: string
+      captchaText: string
+    }
+
+    /** 验证码响应 */
+    interface CaptchaResponse {
+      captchaId: string
+      svg: string
     }
 
     /** 登录响应 */
@@ -29,6 +37,18 @@ declare namespace Api {
     interface RegisterParams {
       username: string
       password: string
+      email: string
+      verificationCode: string
+    }
+
+    /** 发送验证码参数 */
+    interface SendVerificationCodeParams {
+      email: string
+    }
+
+    /** 发送验证码响应 */
+    interface SendVerificationCodeResponse {
+      message: string
     }
 
     /** 注册响应 */
@@ -36,6 +56,8 @@ declare namespace Api {
       userId: string
       userName: string
       message: string
+      token: string
+      refreshToken: string
     }
 
     /** 用户信息 */
