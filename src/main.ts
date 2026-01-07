@@ -20,4 +20,4 @@ setupErrorHandle(app)
 app.use(language)
 app.mount('#app')
 
-console.log('App mounted ')
+console.log('App mounted')
