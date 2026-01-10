@@ -29,6 +29,28 @@
           </ElButton>
           <ElButton
             v-if="selectedRows.length > 0"
+            v-auth="'tag:edit'"
+            type="success"
+            plain
+            v-ripple
+            :disabled="loading"
+            @click="handleBatchToggleStatus(StatusEnum.ENABLED)"
+          >
+            批量启用 ({{ selectedRows.length }})
+          </ElButton>
+          <ElButton
+            v-if="selectedRows.length > 0"
+            v-auth="'tag:edit'"
+            type="warning"
+            plain
+            v-ripple
+            :disabled="loading"
+            @click="handleBatchToggleStatus(StatusEnum.DISABLED)"
+          >
+            批量禁用 ({{ selectedRows.length }})
+          </ElButton>
+          <ElButton
+            v-if="selectedRows.length > 0"
             v-auth="'tag:delete'"
             type="danger"
             plain
@@ -80,16 +102,23 @@
 <script setup lang="ts">
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import { h, ref, computed, onMounted } from 'vue'
-  import { ElTag, ElMessageBox, ElMessage } from 'element-plus'
+  import { ElSwitch, ElMessageBox, ElMessage } from 'element-plus'
   import { useTableColumns } from '@/hooks/core/useTableColumns'
   import { useTagStore } from '@/store/modules/tag'
   import TagSearch from './modules/tag-search.vue'
   import TagDialog from './modules/tag-dialog.vue'
   import TagGroupDialog from './modules/tag-group-dialog.vue'
   import { createSmartDebounce } from '@/utils/table/tableUtils'
-  import { fetchCreateTag, fetchUpdateTag, fetchDeleteTag, fetchBatchDeleteTag } from '@/api/tag'
+  import {
+    fetchCreateTag,
+    fetchUpdateTag,
+    fetchDeleteTag,
+    fetchBatchDeleteTag,
+    fetchBatchToggleTagStatus
+  } from '@/api/tag'
   import { DialogType } from '@/types'
-  import { STATUS_CONFIG } from '@/constants/enums'
+  import { StatusEnum } from '@/constants/enums'
+  import { STATUS_SWITCH_CONFIG } from '@/constants/components'
   import { useAuth } from '@/hooks/core/useAuth'
 
   defineOptions({ name: 'Tag' })
@@ -205,18 +234,6 @@
   })
 
   /**
-   * 获取标签状态配置
-   */
-  const getTagStatusConfig = (status: number) => {
-    return (
-      STATUS_CONFIG[status as keyof typeof STATUS_CONFIG] || {
-        type: 'info' as const,
-        text: '未知'
-      }
-    )
-  }
-
-  /**
    * 判断是否为组节点
    */
   const isGroupNode = (row: TagRow): row is TagTreeItem => {
@@ -287,15 +304,18 @@
       width: 100,
       formatter: (row: TagRow) => {
         if (isGroupNode(row)) {
-          // 组节点显示组状态
-          const groupStatus = (row as TagTreeItem).groupStatus
-          const config = getTagStatusConfig(groupStatus)
-          return h(ElTag, { type: config.type }, () => config.text)
+          return ''
         }
-        // 数据节点显示数据状态
-        const status = (row as TagData).status
-        const config = getTagStatusConfig(status)
-        return h(ElTag, { type: config.type }, () => config.text)
+        // 数据节点使用 Switch
+        const tagData = row as TagData
+        return h(ElSwitch, {
+          modelValue: tagData.status === StatusEnum.ENABLED,
+          loading: (tagData as any)._statusLoading || false,
+          ...STATUS_SWITCH_CONFIG,
+          onChange: (value) => {
+            handleToggleTagStatus(tagData, value as boolean)
+          }
+        })
       }
     },
     {
@@ -440,6 +460,67 @@
     presetGroupCode.value = groupNode.groupCode
     presetGroupName.value = groupNode.groupName
     dialogVisible.value = true
+  }
+
+  /**
+   * 切换标签状态（单个）
+   */
+  const handleToggleTagStatus = async (row: TagData, enabled: boolean) => {
+    // 设置加载状态
+    if (!(row as any)._statusLoading) {
+      ;(row as any)._statusLoading = true
+    }
+
+    try {
+      const newStatus = enabled ? StatusEnum.ENABLED : StatusEnum.DISABLED
+      await fetchBatchToggleTagStatus([row.id], newStatus)
+      ElMessage.success(enabled ? '已启用' : '已禁用')
+      // 更新本地数据
+      row.status = newStatus
+      // 刷新数据
+      await debouncedRefreshTagData()
+    } catch (error) {
+      ElMessage.error(error instanceof Error ? error.message : '状态切换失败')
+      // 刷新数据以恢复原状态
+      await debouncedRefreshTagData()
+    } finally {
+      ;(row as any)._statusLoading = false
+    }
+  }
+
+  /**
+   * 批量切换标签状态
+   */
+  const handleBatchToggleStatus = async (status: StatusEnum) => {
+    if (selectedRows.value.length === 0) {
+      ElMessage.warning('请先选择要操作的标签')
+      return
+    }
+
+    try {
+      const action = status === StatusEnum.ENABLED ? '启用' : '禁用'
+      await ElMessageBox.confirm(
+        `确定要${action}选中的 ${selectedRows.value.length} 个标签吗？`,
+        `批量${action}`,
+        {
+          type: 'warning'
+        }
+      )
+
+      const ids = selectedRows.value.map((row) => row.id)
+      await fetchBatchToggleTagStatus(ids, status)
+      ElMessage.success(`批量${action}成功`)
+      selectedRows.value = []
+      await debouncedRefreshTagData()
+    } catch (error) {
+      if (error !== 'cancel') {
+        ElMessage.error(
+          error instanceof Error
+            ? error.message
+            : `批量${status === StatusEnum.ENABLED ? '启用' : '禁用'}失败`
+        )
+      }
+    }
   }
 
   /**

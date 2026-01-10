@@ -1,10 +1,13 @@
 /**
  * 地址管理相关类型定义
  */
+
+/// <reference path="./common.d.ts" />
+
 declare namespace Api {
   namespace Address {
     /**
-     * 地址信息
+     * 地址信息（与后端返回格式一致）
      */
     interface AddressItem {
       id: number
@@ -17,54 +20,40 @@ declare namespace Api {
       /** 纬度 */
       latitude: number
       /** 省 */
-      province?: string
+      province?: string | null
       /** 市 */
-      city?: string
+      city?: string | null
       /** 区/县 */
-      district?: string
+      district?: string | null
       /** 行政区划代码 */
-      adcode?: string
+      adcode?: string | null
       /** 描述 */
-      description?: string
+      description?: string | null
       /** 状态：1-启用，0-禁用 */
       status: number
       /** 创建者ID */
-      creatorId?: number
-      /** 更新者ID */
-      updaterId?: number
+      createBy?: number | null
       /** 创建时间 */
-      createdAt: string
+      createTime: string
+      /** 更新者ID */
+      updateBy?: number | null
       /** 更新时间 */
-      updatedAt: string
+      updateTime?: string | null
     }
 
     /**
-     * 地址列表响应
+     * 地址列表响应（使用标准分页格式）
      */
-    interface AddressList {
-      list: AddressItem[]
-      total: number
-    }
+    type AddressList = Api.Common.PaginatedResponse<AddressItem>
 
     /**
      * 地址列表查询参数
      */
-    interface AddressListParams {
-      /** 页码 */
-      page?: number
-      /** 每页数量 */
-      pageSize?: number
-      /** 搜索关键词 */
-      keyword?: string
-      /** 省 */
-      province?: string
-      /** 市 */
-      city?: string
-      /** 区/县 */
-      district?: string
-      /** 状态 */
-      status?: number
-    }
+    type AddressListParams = Partial<
+      Pick<AddressItem, 'province' | 'city' | 'district' | 'status'> & {
+        keyword?: string
+      } & Api.Common.CommonSearchParams
+    >
 
     /**
      * 创建地址参数

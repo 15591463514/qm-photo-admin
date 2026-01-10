@@ -20,6 +20,28 @@
           <ElButton v-auth="'notice:rules:add'" @click="showDialog('add')" v-ripple>
             新增规则
           </ElButton>
+          <ElButton
+            v-if="selectedRows.length > 0"
+            v-auth="'notice:rules:edit'"
+            type="success"
+            plain
+            v-ripple
+            :disabled="loading"
+            @click="handleBatchToggleStatus(NoticeStatusEnum.OPEN)"
+          >
+            批量启用 ({{ selectedRows.length }})
+          </ElButton>
+          <ElButton
+            v-if="selectedRows.length > 0"
+            v-auth="'notice:rules:edit'"
+            type="warning"
+            plain
+            v-ripple
+            :disabled="loading"
+            @click="handleBatchToggleStatus(NoticeStatusEnum.CLOSE)"
+          >
+            批量禁用 ({{ selectedRows.length }})
+          </ElButton>
         </template>
       </ArtTableHeader>
 
@@ -51,11 +73,11 @@
 </template>
 
 <script setup lang="ts">
-  import { ElButton, ElTag, ElMessageBox, ElMessage } from 'element-plus'
+  import { ElButton, ElTag, ElSwitch, ElMessageBox, ElMessage } from 'element-plus'
   import { nextTick } from 'vue'
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import { useTable } from '@/hooks/core/useTable'
-  import { fetchRulesList, deleteRule as deleteRuleApi, toggleRuleStatus } from '@/api/notice'
+  import { fetchRulesList, deleteRule as deleteRuleApi, batchToggleRuleStatus } from '@/api/notice'
   import type { NoticeRule } from '@/types/notice'
   import { NoticeStatusEnum, NoticeModeEnum, NoticeModeText } from '@/types/notice'
   import { DialogType } from '@/types'
@@ -64,6 +86,7 @@
   import RulesTestDialog from './modules/rules-test-dialog.vue'
   import { useAuth } from '@/hooks/core/useAuth'
   import { useDictStore } from '@/store/modules/dict'
+  import { STATUS_SWITCH_CONFIG } from '@/constants/components'
 
   defineOptions({ name: 'NoticeRules' })
 
@@ -155,12 +178,15 @@
           prop: 'noticeStatus',
           label: '状态',
           minWidth: 100,
-          formatter: (row: NoticeRule) => {
-            const statusConfig =
-              row.noticeStatus === NoticeStatusEnum.OPEN
-                ? { type: 'success' as const, text: '启用' }
-                : { type: 'info' as const, text: '禁用' }
-            return h(ElTag, { type: statusConfig.type }, () => statusConfig.text)
+          formatter: (row: NoticeRule & { _statusLoading?: boolean }) => {
+            return h(ElSwitch, {
+              modelValue: row.noticeStatus === NoticeStatusEnum.OPEN,
+              loading: row._statusLoading || false,
+              ...STATUS_SWITCH_CONFIG,
+              onChange: (value) => {
+                handleToggleStatus(row, value as boolean)
+              }
+            })
           }
         },
         {
@@ -175,19 +201,6 @@
           fixed: 'right',
           formatter: (row: NoticeRule) =>
             h('div', { style: 'display: flex;' }, [
-              h(ArtButtonTable, {
-                icon:
-                  row.noticeStatus === NoticeStatusEnum.OPEN
-                    ? 'ri:pause-circle-line'
-                    : 'ri:play-circle-line',
-                iconClass:
-                  row.noticeStatus === NoticeStatusEnum.OPEN
-                    ? 'bg-warning/12 text-warning'
-                    : 'bg-success/12 text-success',
-                tooltipContent: row.noticeStatus === NoticeStatusEnum.OPEN ? '禁用' : '启用',
-                show: hasAuth('notice:rules:edit'),
-                onClick: () => toggleStatus(row)
-              }),
               h(ArtButtonTable, {
                 icon: 'ri:send-plane-2-line',
                 iconClass: 'bg-info/12 text-info',
@@ -246,23 +259,65 @@
   }
 
   /**
-   * 切换规则状态
+   * 切换规则状态（单个）
    */
-  const toggleStatus = async (row: NoticeRule): Promise<void> => {
-    try {
-      const action = row.noticeStatus === NoticeStatusEnum.OPEN ? '禁用' : '启用'
-      await ElMessageBox.confirm(`确定要${action}该规则吗？`, `${action}规则`, {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      })
+  const handleToggleStatus = async (
+    row: NoticeRule & { _statusLoading?: boolean },
+    enabled: boolean
+  ): Promise<void> => {
+    // 设置加载状态
+    if (!row._statusLoading) {
+      row._statusLoading = true
+    }
 
-      await toggleRuleStatus(row.ruleId!)
-      ElMessage.success(`${action}成功`)
+    try {
+      const newStatus = enabled ? NoticeStatusEnum.OPEN : NoticeStatusEnum.CLOSE
+      await batchToggleRuleStatus([row.ruleId!], newStatus)
+      ElMessage.success(enabled ? '已启用' : '已禁用')
+      // 更新本地数据
+      row.noticeStatus = newStatus
+      // 刷新数据
+      refreshData()
+    } catch (error: any) {
+      ElMessage.error(error.message || '状态切换失败')
+      // 刷新数据以恢复原状态
+      refreshData()
+    } finally {
+      row._statusLoading = false
+    }
+  }
+
+  /**
+   * 批量切换规则状态
+   */
+  const handleBatchToggleStatus = async (status: NoticeStatusEnum): Promise<void> => {
+    if (selectedRows.value.length === 0) {
+      ElMessage.warning('请先选择要操作的规则')
+      return
+    }
+
+    try {
+      const action = status === NoticeStatusEnum.OPEN ? '启用' : '禁用'
+      await ElMessageBox.confirm(
+        `确定要${action}选中的 ${selectedRows.value.length} 个规则吗？`,
+        `批量${action}`,
+        {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }
+      )
+
+      const ruleIds = selectedRows.value.map((row) => row.ruleId!)
+      await batchToggleRuleStatus(ruleIds, status)
+      ElMessage.success(`批量${action}成功`)
+      selectedRows.value = []
       refreshData()
     } catch (error: any) {
       if (error !== 'cancel') {
-        console.error('操作失败:', error)
+        ElMessage.error(
+          error.message || `批量${status === NoticeStatusEnum.OPEN ? '启用' : '禁用'}失败`
+        )
       }
     }
   }

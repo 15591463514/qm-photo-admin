@@ -102,3 +102,17 @@ export function fetchUpdateTagGroup(groupCode: string, params: Api.Tag.UpdateTag
     showErrorMessage: false // 禁用自动错误提示，由组件统一处理
   })
 }
+
+/**
+ * 批量切换标签状态
+ * @param ids 标签ID数组
+ * @param status 状态（1-启用，0-禁用）
+ * @returns 更新的标签数量
+ */
+export function fetchBatchToggleTagStatus(ids: number[], status: number) {
+  return request.patch<{ count: number }>({
+    url: '/api/tag/batch/status',
+    params: { ids, status },
+    showErrorMessage: false // 禁用自动错误提示，由组件统一处理
+  })
+}

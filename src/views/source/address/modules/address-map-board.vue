@@ -12,7 +12,7 @@
   import { ScalePlugin, ToolBarPlugin, MapTypePlugin } from '@/components/core/maps/service/plugins'
   import type { AmapConfig, CustomMarkerOptions } from '@/components/core/maps/service'
   import '@/components/core/maps/amap-types.d'
-  import { mapMarker1Svg } from '@/assets/svg/map-marker-1'
+  import { mapMarker1EnabledAvg, mapMarker1DisabledAvg } from '@/assets/svg/map-marker-1'
   import { StatusEnum, STATUS_CONFIG } from '@/constants/enums'
 
   defineOptions({ name: 'AddressMapBoard' })
@@ -119,7 +119,8 @@
         labelPosition: 'right',
         icon: {
           // 外部传入 SVG 图标
-          image: mapMarker1Svg,
+          image:
+            address.status === StatusEnum.ENABLED ? mapMarker1EnabledAvg : mapMarker1DisabledAvg,
           size: 20
         },
         zIndex: 100

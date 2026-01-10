@@ -56,11 +56,14 @@ export function deleteRule(ruleId: number) {
 }
 
 /**
- * 切换规则状态
+ * 批量切换规则状态
+ * @param ruleIds 规则ID数组
+ * @param status 状态（1-启用，0-禁用）
  */
-export function toggleRuleStatus(ruleId: number) {
-  return request.put<Api.Notice.Rule>({
-    url: `/api/notice/rules/${ruleId}/status`,
+export function batchToggleRuleStatus(ruleIds: number[], status: number) {
+  return request.patch<{ count: number }>({
+    url: '/api/notice/rules/batch/status',
+    params: { ids: ruleIds.map(String), status },
     showSuccessMessage: true
   })
 }
