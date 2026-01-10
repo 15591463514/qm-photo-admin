@@ -7,6 +7,9 @@ settings:
 importers:
   .:
     dependencies:
+      '@amap/amap-jsapi-loader':
+        specifier: ^1.0.1
+        version: 1.0.1
       '@codemirror/autocomplete':
         specifier: ^6.20.0
         version: 6.20.0
@@ -128,6 +131,9 @@ importers:
         specifier: ^0.18.5
         version: 0.18.5
     devDependencies:
+      '@amap/amap-jsapi-types':
+        specifier: ^0.0.15
+        version: 0.0.15
       '@commitlint/cli':
         specifier: ^19.4.1
         version: 19.8.1(@types/node@24.10.4)(typescript@5.6.3)
@@ -137,6 +143,21 @@ importers:
       '@eslint/js':
         specifier: ^9.9.1
         version: 9.39.2
+      '@types/amap-js-api':
+        specifier: ^1.4.16
+        version: 1.4.16
+      '@types/amap-js-api-autocomplete':
+        specifier: ^1.4.4
+        version: 1.4.4
+      '@types/amap-js-api-geocoder':
+        specifier: ^1.4.4
+        version: 1.4.4
+      '@types/amap-js-api-geolocation':
+        specifier: ^1.4.4
+        version: 1.4.4
+      '@types/amap-js-api-place-search':
+        specifier: ^1.4.4
+        version: 1.4.4
       '@types/codemirror':
         specifier: ^5.60.17
         version: 5.60.17
@@ -155,6 +176,9 @@ importers:
       '@vue/compiler-sfc':
         specifier: ^3.0.5
         version: 3.5.26
+      amap-jsapi-plugins-types:
+        specifier: ^1.0.0
+        version: 1.0.0(@amap/amap-jsapi-types@0.0.15)
       commitizen:
         specifier: ^4.3.0
         version: 4.3.1(@types/node@24.10.4)(typescript@5.6.3)
@@ -250,6 +274,18 @@ importers:
         version: 2.1.10(typescript@5.6.3)
 
 packages:
+  '@amap/amap-jsapi-loader@1.0.1':
+    resolution:
+      {
+        integrity: sha512-nPyLKt7Ow/ThHLkSvn2etQlUzqxmTVgK7bIgwdBRTg2HK5668oN7xVxkaiRe3YZEzGzfV2XgH5Jmu2T73ljejw==
+      }
+
+  '@amap/amap-jsapi-types@0.0.15':
+    resolution:
+      {
+        integrity: sha512-oqyRqHpVDZh5bUe2mAJh41ZsziSj0eUzwcfIbiaBNB0eiTJnZNhKsTdk77VOklOjwuwNfsblpKW9LjmWNpeQ7A==
+      }
+
   '@antfu/utils@0.7.10':
     resolution:
       {
@@ -1790,6 +1826,36 @@ packages:
         integrity: sha512-VeJbUb0wEKbcwaSlj5n+LscBl9IPgLPkHVGBkh00cztv6X4L/TJXK58LzFuBKX7/GAfiGhIwH67YTLTlzvIzBA==
       }
 
+  '@types/amap-js-api-autocomplete@1.4.4':
+    resolution:
+      {
+        integrity: sha512-WJpF2/udyBmJ70czisbawAmgAao8if74eW0LLBwDy0iuRxJvXC7jRzonokyfA37TtnwMXSVuf8mv407Q5JbTjA==
+      }
+
+  '@types/amap-js-api-geocoder@1.4.4':
+    resolution:
+      {
+        integrity: sha512-BH3bAHxiw3uZTAsHCRGB337TOggSYB4u0pVLTqrM5/ZX4Zu9o+SbAa8tLkQ9o+NJp35Q7PxCLX6jBaTcdhnCJg==
+      }
+
+  '@types/amap-js-api-geolocation@1.4.4':
+    resolution:
+      {
+        integrity: sha512-hNixlVmgcJeSpoG2aVk1fiQaRC8aIJDI5AdPg+MIH3yid9RhSkpaGlviO2Kp9M2JRWgj4140fDLGbF/0pu5Pug==
+      }
+
+  '@types/amap-js-api-place-search@1.4.4':
+    resolution:
+      {
+        integrity: sha512-k+zWTEOLnjWGfwYmOWJv9zgZwVq+fMnpRrCTcPtWTgocDIJ/YWeWckdVl9+9zFN8Jxm47GReck/KO0qIuJv5wQ==
+      }
+
+  '@types/amap-js-api@1.4.16':
+    resolution:
+      {
+        integrity: sha512-gfcEswuU4GNRdGAh74FhxfLlU6qxmVIJYPf3HV0uKucCWQ9iSr8TonDhqBvHVmmQEY60K+UAeIh0YLwKo/jpFQ==
+      }
+
   '@types/codemirror@5.60.17':
     resolution:
       {
@@ -2342,6 +2408,14 @@ packages:
       {
         integrity: sha512-cZIRkbERILsBOXTQmMrxc9hgpxglstn69zm+F1ARf4aPAzdAFYd6sBq87ErO0Fj3DV94tglcyHG5kQz9nDC/8A==
       }
+
+  amap-jsapi-plugins-types@1.0.0:
+    resolution:
+      {
+        integrity: sha512-pcbskB+isNfWgsiqjNv0DmEZ3OZXHSNjVPNlzu43FL9WsEYOjUOqlu/AiugNM20W3PxqEPX5u/BljFg1fri5hw==
+      }
+    peerDependencies:
+      '@amap/amap-jsapi-types': 0.0.8
 
   ansi-escapes@4.3.2:
     resolution:
@@ -6590,6 +6664,10 @@ packages:
       }
 
 snapshots:
+  '@amap/amap-jsapi-loader@1.0.1': {}
+
+  '@amap/amap-jsapi-types@0.0.15': {}
+
   '@antfu/utils@0.7.10': {}
 
   '@babel/code-frame@7.27.1':
@@ -7500,6 +7578,25 @@ snapshots:
 
   '@transloadit/prettier-bytes@0.0.7': {}
 
+  '@types/amap-js-api-autocomplete@1.4.4':
+    dependencies:
+      '@types/amap-js-api': 1.4.16
+
+  '@types/amap-js-api-geocoder@1.4.4':
+    dependencies:
+      '@types/amap-js-api': 1.4.16
+
+  '@types/amap-js-api-geolocation@1.4.4':
+    dependencies:
+      '@types/amap-js-api': 1.4.16
+      '@types/amap-js-api-geocoder': 1.4.4
+
+  '@types/amap-js-api-place-search@1.4.4':
+    dependencies:
+      '@types/amap-js-api': 1.4.16
+
+  '@types/amap-js-api@1.4.16': {}
+
   '@types/codemirror@5.60.17':
     dependencies:
       '@types/tern': 0.23.9
@@ -7973,6 +8070,10 @@ snapshots:
       require-from-string: 2.0.2
 
   alien-signals@0.2.2: {}
+
+  amap-jsapi-plugins-types@1.0.0(@amap/amap-jsapi-types@0.0.15):
+    dependencies:
+      '@amap/amap-jsapi-types': 0.0.15
 
   ansi-escapes@4.3.2:
     dependencies:

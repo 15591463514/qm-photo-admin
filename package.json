@@ -52,6 +52,7 @@
     ]
   },
   "dependencies": {
+    "@amap/amap-jsapi-loader": "^1.0.1",
     "@codemirror/autocomplete": "^6.20.0",
     "@codemirror/commands": "^6.10.1",
     "@codemirror/lang-javascript": "^6.2.4",
@@ -94,15 +95,22 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@amap/amap-jsapi-types": "^0.0.15",
     "@commitlint/cli": "^19.4.1",
     "@commitlint/config-conventional": "^19.4.1",
     "@eslint/js": "^9.9.1",
+    "@types/amap-js-api": "^1.4.16",
+    "@types/amap-js-api-autocomplete": "^1.4.4",
+    "@types/amap-js-api-geocoder": "^1.4.4",
+    "@types/amap-js-api-geolocation": "^1.4.4",
+    "@types/amap-js-api-place-search": "^1.4.4",
     "@types/codemirror": "^5.60.17",
     "@types/node": "^24.0.5",
     "@typescript-eslint/eslint-plugin": "^8.3.0",
     "@typescript-eslint/parser": "^8.3.0",
     "@vitejs/plugin-vue": "^6.0.1",
     "@vue/compiler-sfc": "^3.0.5",
+    "amap-jsapi-plugins-types": "^1.0.0",
     "commitizen": "^4.3.0",
     "cz-git": "^1.11.1",
     "eslint": "^9.9.1",

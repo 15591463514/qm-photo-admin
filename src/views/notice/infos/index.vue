@@ -172,7 +172,7 @@
           minWidth: 160,
           fixed: 'right',
           formatter: (row: Api.Notice.Info) =>
-            h('div', { style: 'display: flex; gap: 8px' }, [
+            h('div', { style: 'display: flex;' }, [
               h(ArtButtonTable, {
                 type: 'view',
                 show: hasAuth('notice:infos:view'),

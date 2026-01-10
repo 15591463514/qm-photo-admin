@@ -34,3 +34,9 @@ export * from './menu'
 
 // 字典管理
 export * from './dict'
+
+// 图片管理
+export * from './image'
+
+// 地址管理
+export * from './address'

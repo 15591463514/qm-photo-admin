@@ -174,7 +174,7 @@
           minWidth: 200,
           fixed: 'right',
           formatter: (row: NoticeRule) =>
-            h('div', { style: 'display: flex; gap: 8px' }, [
+            h('div', { style: 'display: flex;' }, [
               h(ArtButtonTable, {
                 icon:
                   row.noticeStatus === NoticeStatusEnum.OPEN
