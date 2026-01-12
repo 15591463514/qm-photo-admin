@@ -24,11 +24,14 @@
       </div>
 
       <div class="p-4">
-        <div
-          class="inline-block py-0.5 px-2 mb-2 text-xs bg-g-300/70 rounded"
-          v-if="props.category"
-        >
-          {{ props.category }}
+        <div v-if="categoryList.length > 0" class="flex-c gap-2 mb-2 flex-wrap">
+          <div
+            v-for="(cat, index) in categoryList"
+            :key="index"
+            class="inline-block py-0.5 px-2 text-xs bg-g-300/70 rounded"
+          >
+            {{ cat }}
+          </div>
         </div>
         <p class="m-0 mb-3 text-base font-medium">{{ props.title }}</p>
         <div class="flex-c gap-4 text-xs text-g-600">
@@ -48,6 +51,7 @@
 </template>
 
 <script setup lang="ts">
+  import { computed } from 'vue'
   import { Picture, View, ChatLineRound } from '@element-plus/icons-vue'
 
   defineOptions({ name: 'ArtImageCard' })
@@ -57,8 +61,8 @@
     imageUrl: string
     /** 标题 */
     title: string
-    /** 分类 */
-    category?: string
+    /** 分类，可以是单个字符串或字符串数组 */
+    category?: string | string[]
     /** 阅读时间 */
     readTime?: string
     /** 浏览量 */
@@ -72,11 +76,20 @@
   const props = withDefaults(defineProps<Props>(), {
     imageUrl: '',
     title: '',
-    category: '',
+    category: undefined,
     readTime: '',
     views: 0,
     comments: 0,
     date: ''
+  })
+
+  // 将分类统一转换为数组格式
+  const categoryList = computed(() => {
+    if (!props.category) return []
+    if (Array.isArray(props.category)) {
+      return props.category.filter((cat) => cat && cat.trim())
+    }
+    return props.category.trim() ? [props.category] : []
   })
 
   const emit = defineEmits<{

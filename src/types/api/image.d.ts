@@ -30,6 +30,8 @@ declare namespace Api {
       ownerId?: number
       /** 图片所有者名称 */
       ownerName?: string
+      /** 所属相册ID */
+      albumId?: number
       /** 标签列表 */
       tags?: string[]
       /** 地点 */
@@ -58,6 +60,8 @@ declare namespace Api {
       keyword?: string
       /** 图片所有者ID */
       ownerId?: number
+      /** 所属相册ID */
+      albumId?: number
       /** 标签（多个用逗号分隔） */
       tags?: string
       /** 地点 */

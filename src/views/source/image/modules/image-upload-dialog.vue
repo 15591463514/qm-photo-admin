@@ -1,7 +1,7 @@
 <template>
   <ElDialog
     v-model="dialogVisible"
-    :title="isEditMode ? '批量编辑图片' : '图片上传'"
+    :title="dialogTitle"
     width="70%"
     :close-on-click-modal="false"
     @close="handleClose"
@@ -43,10 +43,11 @@
               <ElSelect
                 v-model="formData.tags"
                 multiple
+                :multiple-limit="6"
                 filterable
                 allow-create
                 default-first-option
-                placeholder="选择或创建标签"
+                placeholder="选择或创建标签（最多6个）"
                 class="w-full"
               >
                 <ElOption v-for="tag in tagOptions" :key="tag" :label="tag" :value="tag" />
@@ -73,8 +74,56 @@
         </ElCol>
         <!-- 右侧：上传组件或选中图片列表 -->
         <ElCol :xs="24" :md="isEditMode ? 18 : 18" class="upload-area-col">
-          <!-- 编辑模式：显示选中的图片列表 -->
-          <template v-if="isEditMode">
+          <!-- 单个编辑模式：显示大图预览 -->
+          <template v-if="isSingleEditMode && singleEditImage">
+            <div class="single-edit-container">
+              <div class="single-edit-image-wrapper">
+                <ElImage
+                  :src="singleEditImage.url"
+                  fit="contain"
+                  class="single-edit-image"
+                  :preview-src-list="[singleEditImage.url]"
+                  preview-teleported
+                >
+                  <template #placeholder>
+                    <div class="flex-cc w-full h-full bg-[#f5f7fa]">
+                      <ElIcon><Picture /></ElIcon>
+                    </div>
+                  </template>
+                </ElImage>
+              </div>
+              <div class="single-edit-info">
+                <div class="single-edit-name" :title="singleEditImage.name">
+                  {{ singleEditImage.name }}
+                </div>
+                <div class="single-edit-meta">
+                  <div v-if="singleEditImage.ownerName" class="single-edit-meta-item">
+                    <span class="text-sm text-g-500">所有者：</span>
+                    <span class="text-sm text-g-700">{{ singleEditImage.ownerName }}</span>
+                  </div>
+                  <div v-if="singleEditImage.location" class="single-edit-meta-item">
+                    <span class="text-sm text-g-500">地点：</span>
+                    <span class="text-sm text-g-700">{{ singleEditImage.location }}</span>
+                  </div>
+                  <div
+                    v-if="singleEditImage.tags && singleEditImage.tags.length > 0"
+                    class="single-edit-tags"
+                  >
+                    <ElTag
+                      v-for="tag in singleEditImage.tags"
+                      :key="tag"
+                      size="small"
+                      class="single-edit-tag"
+                    >
+                      {{ tag }}
+                    </ElTag>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+          <!-- 批量编辑模式：显示选中的图片列表 -->
+          <template v-else-if="isBatchEditMode">
             <div class="selected-images-container">
               <div class="selected-images-header">
                 <span class="text-sm text-g-600">已选择 {{ editImageList.length }} 张图片</span>
@@ -164,7 +213,7 @@
           :disabled="!isEditMode && uploadFileList.length === 0"
         >
           <ElIcon v-if="!isEditMode"><Upload /></ElIcon>
-          {{ isEditMode ? '保存' : '批量上传' }}
+          {{ isSingleEditMode ? '保存' : isBatchEditMode ? '批量保存' : '批量上传' }}
         </ElButton>
       </div>
     </template>
@@ -188,7 +237,7 @@
     ElIcon
   } from 'element-plus'
   import { Plus, Upload, Picture, InfoFilled } from '@element-plus/icons-vue'
-  import { fetchUploadImage, fetchSearchUsers } from '@/api/image'
+  import { fetchUploadImage, fetchSearchUsers, fetchUpdateImage } from '@/api/image'
 
   interface Props {
     visible: boolean
@@ -214,8 +263,32 @@
   // 是否为编辑模式
   const isEditMode = computed(() => props.editImageIds && props.editImageIds.length > 0)
 
+  // 是否为单个编辑模式
+  const isSingleEditMode = computed(() => isEditMode.value && props.editImageIds.length === 1)
+
+  // 是否为批量编辑模式
+  const isBatchEditMode = computed(() => isEditMode.value && props.editImageIds.length > 1)
+
+  // 弹窗标题
+  const dialogTitle = computed(() => {
+    if (isSingleEditMode.value) {
+      return '编辑图片'
+    } else if (isBatchEditMode.value) {
+      return '批量编辑图片'
+    }
+    return '图片上传'
+  })
+
   // 编辑模式下的图片列表
   const editImageList = computed(() => props.editImageList || [])
+
+  // 单个编辑模式下的图片
+  const singleEditImage = computed(() => {
+    if (isSingleEditMode.value && editImageList.value.length > 0) {
+      return editImageList.value[0]
+    }
+    return null
+  })
 
   // 检查是否有填写表单数据（编辑模式）
   const hasFormData = computed(() => {
@@ -340,34 +413,69 @@
       // 获取已填写的字段
       const filledFields = getFilledFields()
       const fieldsText = filledFields.join('"、"')
-      const confirmMessage = `此操作将更新已选中图片的"${fieldsText}"信息，是否继续？`
 
-      try {
-        await ElMessageBox.confirm(confirmMessage, '提示', {
-          type: 'warning',
-          confirmButtonText: '确定',
-          cancelButtonText: '取消'
-        })
-      } catch (error: any) {
-        if (error !== 'cancel') {
-          ElMessage.error(error.message || '操作失败')
+      // 单个编辑模式
+      if (isSingleEditMode.value) {
+        const confirmMessage = `此操作将更新图片的"${fieldsText}"信息，是否继续？`
+
+        try {
+          await ElMessageBox.confirm(confirmMessage, '提示', {
+            type: 'warning',
+            confirmButtonText: '确定',
+            cancelButtonText: '取消'
+          })
+        } catch (error: any) {
+          if (error !== 'cancel') {
+            ElMessage.error(error.message || '操作失败')
+          }
+          return
+        }
+
+        uploading.value = true
+        try {
+          await fetchUpdateImage(props.editImageIds[0], formData.value)
+          ElMessage.success('成功更新图片信息')
+          handleClose()
+          emit('success')
+        } catch (error: any) {
+          ElMessage.error(error.message || '更新失败')
+        } finally {
+          uploading.value = false
         }
         return
       }
 
-      uploading.value = true
-      try {
-        // TODO: 调用批量更新API
-        // await fetchBatchUpdateImages(props.editImageIds, formData.value)
-        ElMessage.success(`成功更新 ${props.editImageIds.length} 张图片的元数据`)
-        handleClose()
-        emit('success')
-      } catch (error: any) {
-        ElMessage.error(error.message || '批量更新失败')
-      } finally {
-        uploading.value = false
+      // 批量编辑模式
+      if (isBatchEditMode.value) {
+        const confirmMessage = `此操作将更新已选中 ${props.editImageIds.length} 张图片的"${fieldsText}"信息，是否继续？`
+
+        try {
+          await ElMessageBox.confirm(confirmMessage, '提示', {
+            type: 'warning',
+            confirmButtonText: '确定',
+            cancelButtonText: '取消'
+          })
+        } catch (error: any) {
+          if (error !== 'cancel') {
+            ElMessage.error(error.message || '操作失败')
+          }
+          return
+        }
+
+        uploading.value = true
+        try {
+          // TODO: 调用批量更新API
+          // await fetchBatchUpdateImages(props.editImageIds, formData.value)
+          ElMessage.success(`成功更新 ${props.editImageIds.length} 张图片的元数据`)
+          handleClose()
+          emit('success')
+        } catch (error: any) {
+          ElMessage.error(error.message || '批量更新失败')
+        } finally {
+          uploading.value = false
+        }
+        return
       }
-      return
     }
 
     // 上传模式
@@ -420,17 +528,56 @@
     dialogVisible.value = false
   }
 
-  // 监听弹窗关闭，重置表单
+  // 初始化单个编辑模式的表单数据
+  const initSingleEditFormData = () => {
+    if (isSingleEditMode.value && singleEditImage.value) {
+      const image = singleEditImage.value
+      formData.value = {
+        ownerId: image.ownerId,
+        tags: image.tags || [],
+        location: image.location
+      }
+    } else {
+      formData.value = {
+        ownerId: undefined,
+        tags: [],
+        location: undefined
+      }
+    }
+  }
+
+  // 监听弹窗显示，初始化表单数据
   watch(
     () => props.visible,
     (newVal) => {
-      if (!newVal) {
+      if (newVal) {
+        // 单个编辑模式时，初始化表单数据
+        if (isSingleEditMode.value) {
+          initSingleEditFormData()
+        } else {
+          formData.value = {
+            ownerId: undefined,
+            tags: [],
+            location: undefined
+          }
+        }
+      } else {
         uploadFileList.value = []
         formData.value = {
           ownerId: undefined,
           tags: [],
           location: undefined
         }
+      }
+    }
+  )
+
+  // 监听编辑图片列表变化，更新表单数据
+  watch(
+    () => [isSingleEditMode.value, singleEditImage.value],
+    () => {
+      if (props.visible && isSingleEditMode.value) {
+        initSingleEditFormData()
       }
     }
   )
@@ -550,5 +697,71 @@
     .el-icon {
       font-size: 14px;
     }
+  }
+
+  // 单个编辑模式样式
+  .single-edit-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    height: 100%;
+  }
+
+  .single-edit-image-wrapper {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+    overflow: hidden;
+    background: var(--el-bg-color-page);
+    border-radius: var(--el-border-radius-base);
+  }
+
+  .single-edit-image {
+    width: 100%;
+    max-height: 60vh;
+    object-fit: contain;
+  }
+
+  .single-edit-info {
+    flex-shrink: 0;
+    padding: 16px;
+    background: var(--el-bg-color);
+    border: 1px solid var(--el-border-color-lighter);
+    border-radius: var(--el-border-radius-base);
+  }
+
+  .single-edit-name {
+    margin-bottom: 12px;
+    overflow: hidden;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--el-text-color-primary);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .single-edit-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .single-edit-meta-item {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .single-edit-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+  }
+
+  .single-edit-tag {
+    margin: 0;
   }
 </style>

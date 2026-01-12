@@ -1,6 +1,23 @@
 <!-- 图片管理页面 -->
 <template>
-  <div class="image-page art-full-height">
+  <div class="art-full-height">
+    <div class="flex-c">
+      <!-- 相册导航栏（从相册进入时显示） -->
+      <div v-if="currentAlbumId" class="flex-c items-center gap-3">
+        <div class="flex-c items-center gap-3">
+          <ElButton type="primary" link @click="handleBackToAlbum">
+            <ElIcon><ArrowLeft /></ElIcon>
+            返回相册
+          </ElButton>
+          <ElDivider direction="vertical" />
+          <div class="flex-c items-center gap-2">
+            <span class="text-g-600">当前相册：</span>
+            <span>{{ currentAlbumName || '未命名相册' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- 搜索栏 -->
     <ImageSearch
       v-show="showSearchBar"
@@ -9,7 +26,11 @@
       @reset="resetSearchParams"
     />
 
-    <ElCard class="art-table-card" shadow="never">
+    <ElCard
+      class="art-table-card"
+      shadow="never"
+      :style="{ 'margin-top': showSearchBar ? '12px' : '0' }"
+    >
       <!-- 表格头部 -->
       <ArtTableHeader
         v-model:columns="columnChecks"
@@ -19,24 +40,28 @@
       >
         <template #left>
           <!-- 上传按钮 -->
-          <div class="flex-c gap-4">
+          <div class="flex-c gap-3">
             <!-- 选择/查看模式切换 -->
-            <ElRadioGroup v-model="selectMode" size="default">
-              <ElRadioButton :label="false">查看模式</ElRadioButton>
-              <ElRadioButton :label="true">编辑模式</ElRadioButton>
-            </ElRadioGroup>
-            <!-- 视图模式切换 -->
-            <ElRadioGroup
-              :model-value="viewMode"
+            <ElSegmented
+              :model-value="selectMode ? 'edit' : 'view'"
+              :options="selectModeOptions"
               size="default"
-              :disabled="selectMode"
+              @change="(val: string | number) => (selectMode = val === 'edit')"
+            />
+            <!-- 视图模式切换 -->
+            <ElSegmented
+              :model-value="viewMode"
+              :options="viewModeOptions"
+              size="default"
               @change="handleModeChange as any"
+            />
+            <ElButton
+              v-if="!selectMode"
+              type="primary"
+              plain
+              v-ripple
+              @click="handleOpenUploadDialog"
             >
-              <ElRadioButton label="large">大图</ElRadioButton>
-              <ElRadioButton label="small">小图</ElRadioButton>
-              <ElRadioButton label="table">列表</ElRadioButton>
-            </ElRadioGroup>
-            <ElButton v-if="!selectMode" type="primary" @click="handleOpenUploadDialog">
               <ElIcon><Upload /></ElIcon>
               上传图片
             </ElButton>
@@ -109,18 +134,38 @@
                 :image-url="image.url"
                 :title="image.name"
                 :views="image.views"
+                :category="image.tags"
                 :date="formatDate(image.uploadTime)"
                 :class="{
                   'pointer-events-none': selectMode,
                   'image-card-selected': selectMode && isImageSelected(image.id)
                 }"
               />
-              <div
-                v-if="!selectMode"
-                class="delete-btn-wrapper absolute top-2 right-2 flex-c gap-2 z-10"
-              >
-                <ElButton type="danger" size="small" circle @click.stop="handleDelete(image)">
-                  <ElIcon><Delete /></ElIcon>
+              <!-- 编辑模式：显示操作按钮 -->
+              <div class="image-card-actions" @click.stop>
+                <ElButton
+                  type="primary"
+                  link
+                  size="small"
+                  :style="{
+                    opacity: selectMode ? 1 : 0,
+                    pointerEvents: selectMode ? 'auto' : 'none'
+                  }"
+                  @click="handleEdit(image)"
+                >
+                  编辑
+                </ElButton>
+                <ElButton
+                  type="danger"
+                  link
+                  size="small"
+                  :style="{
+                    opacity: selectMode ? 1 : 0,
+                    pointerEvents: selectMode ? 'auto' : 'none'
+                  }"
+                  @click="handleDelete(image)"
+                >
+                  删除
                 </ElButton>
               </div>
             </div>
@@ -180,9 +225,31 @@
                   </div>
                 </template>
               </ElImage>
-              <div v-if="!selectMode" class="delete-btn-wrapper-small absolute top-1 right-1 z-10">
-                <ElButton type="danger" size="small" circle @click.stop="handleDelete(image)">
-                  <ElIcon><Delete /></ElIcon>
+              <!-- 编辑模式：显示操作按钮 -->
+              <div class="image-card-actions-small" @click.stop>
+                <ElButton
+                  type="primary"
+                  link
+                  size="small"
+                  :style="{
+                    opacity: selectMode ? 1 : 0,
+                    pointerEvents: selectMode ? 'auto' : 'none'
+                  }"
+                  @click="handleEdit(image)"
+                >
+                  编辑
+                </ElButton>
+                <ElButton
+                  type="danger"
+                  link
+                  size="small"
+                  :style="{
+                    opacity: selectMode ? 1 : 0,
+                    pointerEvents: selectMode ? 'auto' : 'none'
+                  }"
+                  @click="handleDelete(image)"
+                >
+                  删除
                 </ElButton>
               </div>
             </div>
@@ -208,6 +275,7 @@
         <!-- 表格模式 -->
         <template v-else-if="viewMode === 'table'">
           <ArtTable
+            ref="tableRef"
             table-layout="auto"
             :loading="loading"
             :data="imageList"
@@ -216,6 +284,7 @@
             @selection-change="handleSelectionChange"
             @pagination:size-change="handleSizeChange"
             @pagination:current-change="handleCurrentChange"
+            @row-click="(row: Api.Image.ImageItem) => !selectMode && handleImageClick(row)"
           />
         </template>
       </div>
@@ -226,13 +295,13 @@
       v-model:visible="uploadDialogVisible"
       :tag-options="tagOptions"
       :location-options="locationOptions"
-      :edit-image-ids="selectedImages"
-      :edit-image-list="selectedImageList"
+      :edit-image-ids="singleEditImage ? [singleEditImage.id] : selectedImages"
+      :edit-image-list="singleEditImage ? [singleEditImage] : selectedImageList"
       @success="handleUploadSuccess"
     />
 
     <!-- 图片预览对话框 -->
-    <ElDialog v-model="previewVisible" title="图片预览" width="80%" top="10vh">
+    <ElDialog v-model="previewVisible" title="图片预览" width="80%" top="5vh">
       <div v-if="previewImage" class="preview-content">
         <ElRow :gutter="20" class="flex-col md:flex-row">
           <!-- 图片区域 -->
@@ -285,7 +354,8 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, onMounted, h, computed } from 'vue'
+  import { ref, onMounted, h, computed, watch } from 'vue'
+  import { useRoute, useRouter } from 'vue-router'
   import {
     ElMessage,
     ElMessageBox,
@@ -293,15 +363,15 @@
     ElDescriptionsItem,
     ElImage,
     ElTag,
-    ElRadioGroup,
-    ElRadioButton,
+    ElSegmented,
     ElPagination,
     ElEmpty,
+    ElDivider,
     ElRow,
     ElCol,
     ElCheckbox
   } from 'element-plus'
-  import { Upload, Loading, Delete, Picture, Edit, Check } from '@element-plus/icons-vue'
+  import { Upload, Loading, Delete, Picture, Edit, Check, ArrowLeft } from '@element-plus/icons-vue'
   import ArtImageCard from '@/components/core/cards/art-image-card/index.vue'
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import ArtTableHeader from '@/components/core/tables/art-table-header/index.vue'
@@ -314,6 +384,46 @@
 
   defineOptions({ name: 'ImageUpload' })
 
+  // 路由
+  const route = useRoute()
+  const router = useRouter()
+
+  // 当前相册信息（从路由查询参数获取）
+  const currentAlbumId = ref<number | null>(null)
+  const currentAlbumName = ref<string | null>(null)
+
+  // 从路由查询参数初始化相册信息
+  const initAlbumInfo = () => {
+    const albumId = route.query.albumId as string
+    const albumName = route.query.albumName as string
+
+    if (albumId) {
+      currentAlbumId.value = parseInt(albumId, 10)
+      currentAlbumName.value = albumName
+    } else {
+      currentAlbumId.value = null
+      currentAlbumName.value = null
+    }
+  }
+
+  // 返回相册页面
+  const handleBackToAlbum = () => {
+    router.back()
+  }
+
+  // 监听路由变化
+  watch(
+    () => route.query,
+    () => {
+      initAlbumInfo()
+      // 如果相册ID变化，重新加载图片列表
+      if (currentAlbumId.value) {
+        loadImageList()
+      }
+    },
+    { immediate: true }
+  )
+
   // 资源管理 Store
   const sourceStore = useSourceStore()
   const viewMode = computed({
@@ -322,7 +432,7 @@
   })
 
   // 搜索栏显示状态
-  const showSearchBar = ref(true)
+  const showSearchBar = ref(false)
 
   // 搜索表单数据
   const searchForm = ref<Record<string, any>>({
@@ -349,8 +459,24 @@
   const loading = ref(false)
   const imageList = ref<Api.Image.ImageItem[]>([])
 
+  // 表格引用（用于表格模式下的行选择操作）
+  const tableRef = ref<InstanceType<typeof ArtTable> | null>(null)
+
   // 选择模式/查看模式
   const selectMode = ref(false)
+
+  // 选择模式选项
+  const selectModeOptions = [
+    { label: '查看模式', value: 'view' },
+    { label: '编辑模式', value: 'edit' }
+  ]
+
+  // 视图模式选项
+  const viewModeOptions = [
+    { label: '大图', value: 'large' },
+    { label: '小图', value: 'small' },
+    { label: '列表', value: 'table' }
+  ]
 
   // 选中的图片ID列表
   const selectedImages = ref<number[]>([])
@@ -359,6 +485,9 @@
   const selectedImageList = computed(() => {
     return imageList.value.filter((image) => selectedImages.value.includes(image.id))
   })
+
+  // 单个编辑的图片（不影响多选）
+  const singleEditImage = ref<Api.Image.ImageItem | null>(null)
 
   // 分页相关
   const pagination = ref({
@@ -377,7 +506,7 @@
   // 表格列配置
   const tableColumns = computed<ColumnOption[]>(() => {
     const columns: ColumnOption[] = []
-    // 选择模式下显示selection列
+    // 只在编辑模式下显示复选框列
     if (selectMode.value) {
       columns.push({ type: 'selection', width: 55 })
     }
@@ -389,11 +518,21 @@
         width: 120,
         formatter: (row: Api.Image.ImageItem) => {
           return h(ElImage, {
-            class: 'w-20 h-20 rounded',
+            class: 'w-20 h-20 rounded cursor-pointer',
             src: row.url,
             fit: 'cover',
-            previewSrcList: [row.url],
-            previewTeleported: true
+            preview: false,
+            onClick: (e: Event) => {
+              e.stopPropagation()
+              if (selectMode.value) {
+                // 编辑模式下，点击图片切换行的选中状态
+                const isSelected = isImageSelected(row.id)
+                tableRef.value?.elTableRef?.toggleRowSelection(row, !isSelected)
+              } else {
+                // 查看模式下，点击图片打开预览
+                handleImageClick(row)
+              }
+            }
           })
         }
       },
@@ -453,22 +592,29 @@
         label: '地点',
         width: 120,
         formatter: (row: Api.Image.ImageItem) => row.location || '-'
-      },
-      {
+      }
+    )
+    if (selectMode.value) {
+      columns.push({
         prop: 'operation',
         label: '操作',
-        width: 120,
+        width: 180,
         fixed: 'right',
         formatter: (row: Api.Image.ImageItem) =>
-          h('div', [
+          h('div', {}, [
+            h(ArtButtonTable, {
+              type: 'edit',
+              show: selectMode.value,
+              onClick: () => handleEdit(row)
+            }),
             h(ArtButtonTable, {
               type: 'delete',
-              show: true,
+              show: selectMode.value,
               onClick: () => handleDelete(row)
             })
           ])
-      }
-    )
+      })
+    }
     return columns
   })
 
@@ -497,7 +643,9 @@
         endTime:
           searchForm.value.daterange && Array.isArray(searchForm.value.daterange)
             ? searchForm.value.daterange[1]
-            : undefined
+            : undefined,
+        // 如果有相册ID，添加到查询参数（实际接口需要支持此参数）
+        albumId: currentAlbumId.value || undefined
       }
 
       const response = await fetchGetImageList(params)
@@ -554,8 +702,9 @@
 
   // 上传成功回调（包括编辑成功）
   const handleUploadSuccess = () => {
-    // 清空选中项
-    selectedImages.value = []
+    // 清空单个编辑图片
+    singleEditImage.value = null
+    // 注意：不清空 selectedImages，保持多选状态
     loadImageList()
   }
 
@@ -572,6 +721,8 @@
       pagination.value.pageSize = 10
     }
     pagination.value.page = 1
+    // 切换模式时清空多选数据（因为不同模式的分页大小不同）
+    selectedImages.value = []
     loadImageList()
   }
 
@@ -592,6 +743,13 @@
   const handleImageClick = (image: Api.Image.ImageItem) => {
     previewImage.value = image
     previewVisible.value = true
+  }
+
+  // 编辑图片
+  const handleEdit = (image: Api.Image.ImageItem) => {
+    // 设置单个编辑图片，不影响多选数据
+    singleEditImage.value = image
+    uploadDialogVisible.value = true
   }
 
   // 删除图片
@@ -663,13 +821,6 @@
       selectedImages.value = []
     }
   }
-
-  // 监听选择模式切换，切换时清空选中项
-  watch(selectMode, (newVal) => {
-    if (!newVal) {
-      selectedImages.value = []
-    }
-  })
 
   // 批量编辑
   const handleBatchEdit = () => {
@@ -755,10 +906,6 @@
 </script>
 
 <style scoped lang="scss">
-  .image-page {
-    padding: 20px;
-  }
-
   :deep(.art-table-card) {
     display: flex;
     flex-direction: column;
@@ -797,17 +944,6 @@
 
   .image-item-wrapper {
     position: relative;
-
-    &:hover {
-      .delete-btn-wrapper {
-        opacity: 1;
-      }
-    }
-  }
-
-  .delete-btn-wrapper {
-    opacity: 0;
-    transition: opacity 0.2s ease;
   }
 
   .image-item-small-wrapper {
@@ -818,17 +954,8 @@
     transition: transform 0.3s ease;
 
     &:hover {
-      transform: scale(1.05);
-
-      .delete-btn-wrapper-small {
-        opacity: 1;
-      }
+      transform: scale(1.02);
     }
-  }
-
-  .delete-btn-wrapper-small {
-    opacity: 0;
-    transition: opacity 0.2s ease;
   }
 
   .image-small {
@@ -842,10 +969,6 @@
   .image-item-small-wrapper.select-mode {
     cursor: pointer;
     transition: all 0.3s ease;
-
-    &:hover {
-      transform: scale(1.02);
-    }
   }
 
   // 选中状态的边框（使用outline避免圆角不贴合问题）
@@ -885,12 +1008,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 48px;
-    height: 48px;
+    width: 36px;
+    height: 36px;
     color: white;
     background: var(--el-color-primary);
     border-radius: 50%;
-    box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
+    box-shadow: 0 2px 6px rgb(0 0 0 / 15%);
 
     &::before {
       position: absolute;
@@ -907,7 +1030,7 @@
   .check-icon {
     position: relative;
     z-index: 1;
-    font-size: 28px;
+    font-size: 22px;
     font-weight: bold;
   }
 
@@ -959,6 +1082,30 @@
     z-index: 1;
     font-size: 22px;
     font-weight: bold;
+  }
+
+  // 大图模式操作按钮
+  .image-card-actions {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 20;
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    transition: opacity 0.3s ease;
+  }
+
+  // 小图模式操作按钮
+  .image-card-actions-small {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 20;
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    transition: opacity 0.3s ease;
   }
 
   .preview-image-col {

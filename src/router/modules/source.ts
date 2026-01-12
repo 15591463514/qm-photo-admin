@@ -39,6 +39,16 @@ export const sourceRoutes: AppRouteRecord = {
         keepAlive: true,
         roles: ['R_SUPER', 'R_ADMIN']
       }
+    },
+    {
+      path: 'album',
+      name: 'Album',
+      component: '/source/album',
+      meta: {
+        title: '相册管理',
+        keepAlive: true,
+        roles: ['R_SUPER', 'R_ADMIN']
+      }
     }
   ]
 }

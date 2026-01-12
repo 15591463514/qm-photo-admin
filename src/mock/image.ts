@@ -15,6 +15,7 @@ export const mockImages: Api.Image.ImageItem[] = [
     uploader: 'admin',
     ownerId: 1,
     ownerName: '管理员',
+    albumId: 1, // 属于"自然风光"相册
     tags: ['自然', '风景', '户外'],
     location: '北京市朝阳区奥林匹克公园',
     views: 125
@@ -32,6 +33,7 @@ export const mockImages: Api.Image.ImageItem[] = [
     uploader: 'user1',
     ownerId: 2,
     ownerName: '用户一',
+    albumId: 3, // 属于"人物肖像"相册
     tags: ['人物', '肖像'],
     location: '上海市黄浦区外滩中山东一路',
     views: 89
@@ -49,6 +51,7 @@ export const mockImages: Api.Image.ImageItem[] = [
     uploader: 'admin',
     ownerId: 1,
     ownerName: '管理员',
+    albumId: 2, // 属于"城市建筑"相册
     tags: ['建筑', '现代', '城市'],
     location: '深圳市南山区科技园南区',
     views: 67
@@ -217,6 +220,11 @@ export function mockGetImageList(
       if (params.location) {
         filteredList = filteredList.filter((item) => item.location === params.location)
       }
+
+      // 按相册ID过滤
+      // if (params.albumId !== undefined) {
+      //   filteredList = filteredList.filter((item) => item.albumId === params.albumId)
+      // }
 
       // 按时间范围过滤
       if (params.startTime || params.endTime) {

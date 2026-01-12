@@ -64,6 +64,26 @@ export function fetchDeleteImage(id: number) {
 }
 
 /**
+ * 编辑单个图片
+ * @param id 图片ID
+ * @param config 编辑配置（所有者、标签、地点）
+ * @returns 编辑结果
+ */
+export function fetchUpdateImage(id: number, config: Api.Image.ImageUploadParams) {
+  // 使用 mock 数据
+  return Promise.resolve({
+    id,
+    ...config
+  })
+
+  // 实际接口调用（注释掉，等后端接口准备好后启用）
+  // return request.put<Api.Image.ImageUpdateResponse>({
+  //   url: `/api/image/${id}`,
+  //   data: config
+  // })
+}
+
+/**
  * 搜索用户（远程搜索）
  * @param keyword 搜索关键词（邮箱、账号、昵称、电话）
  * @returns 用户列表
